@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ministries.schema.json",
+  "title": "Ministry registry",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["ministry_no", "name"],
+    "properties": {
+      "ministry_no": {"type": "integer", "minimum": 1},
+      "name": {"type": "string", "minLength": 1},
+      "acronym": {"type": ["string", "null"]},
+      "website": {"type": ["string", "null"]}
+    }
+  }
+}

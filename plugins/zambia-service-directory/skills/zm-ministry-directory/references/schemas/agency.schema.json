@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agency.schema.json",
+  "title": "Agency review result",
+  "type": "object",
+  "required": [
+    "ministry",
+    "ministry_no",
+    "official_name",
+    "entity_type",
+    "status",
+    "eservices",
+    "digitizable_service_areas",
+    "source_link",
+    "passports"
+  ],
+  "properties": {
+    "ministry": {
+      "type": "string"
+    },
+    "ministry_no": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "official_name": {
+      "type": "string",
+      "description": "current official name incl. acronym in brackets, e.g. 'Zambia Tourism Agency (ZTA)'"
+    },
+    "acronym": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "entity_type": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "Included",
+        "Excluded"
+      ]
+    },
+    "status_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "digitizable_service_areas": {
+      "type": "string"
+    },
+    "source_link": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "website": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "eservices": {
+      "type": "object",
+      "required": [
+        "status",
+        "service_count"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "Listed on Zambia eServices",
+            "Not listed on Zambia eServices \u2014 0 services"
+          ]
+        },
+        "eservices_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "exact provider name used on eServices"
+        },
+        "authority_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "service_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "exact API count of national services for this provider"
+        },
+        "service_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "eservices_id",
+              "reason"
+            ],
+            "properties": {
+              "eservices_id": {
+                "type": "integer"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "reassigned_out": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "eservices_id",
+              "to_agency",
+              "reason"
+            ],
+            "properties": {
+              "eservices_id": {
+                "type": "integer"
+              },
+              "to_agency": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "to_slug": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "other_sources_summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "short label used in Notes, e.g. 'the DNPW forms page'"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Agencies sheet Notes; generated from TERMINOLOGY patterns when null"
+    },
+    "source_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "historical_fee_warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "searched_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "passports": {
+      "type": "array",
+      "items": {
+        "$ref": "passport.schema.json"
+      }
+    },
+    "slug": {
+      "type": "string"
+    },
+    "roster_name": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "zambia",
+  "description": "Zambia National Service Directory tools for Claude Code",
+  "owner": {
+    "name": "dotGov Solutions",
+    "email": "ion.caisin@dotgovsolutions.net"
+  },
+  "plugins": [
+    {
+      "name": "zambia-service-directory",
+      "description": "Research one Zambian ministry's agencies and public services (eServices + official sources), verify every service passport, and write the ministry's National Service Directory Excel workbook.",
+      "author": {
+        "name": "dotGov Solutions",
+        "email": "ion.caisin@dotgovsolutions.net"
+      },
+      "category": "research",
+      "source": "./plugins/zambia-service-directory",
+      "keywords": [
+        "zambia",
+        "government",
+        "eservices",
+        "excel",
+        "research",
+        "directory"
+      ]
+    }
+  ]
+}

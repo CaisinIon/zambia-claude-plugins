@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "passport.schema.json",
+  "title": "Service passport",
+  "type": "object",
+  "required": [
+    "ministry",
+    "agency",
+    "service_name",
+    "service_description",
+    "who_can_apply",
+    "eligibility_requirements",
+    "fee",
+    "processing_time",
+    "validity",
+    "legal_references",
+    "source_link",
+    "origin",
+    "action",
+    "field_sources",
+    "verification"
+  ],
+  "properties": {
+    "ministry": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agency": {
+      "type": "string",
+      "minLength": 1
+    },
+    "service_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "service_description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "who_can_apply": {
+      "type": "string",
+      "minLength": 1
+    },
+    "eligibility_requirements": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fee": {
+      "type": "string",
+      "minLength": 1
+    },
+    "processing_time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "legal_references": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_link": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "origin": {
+      "enum": [
+        "eservices",
+        "official_other",
+        "imported"
+      ]
+    },
+    "eservices_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "reassigned_from": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "eServices provider name when the service is delivered by this agency instead"
+    },
+    "reassignment_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "action": {
+      "enum": [
+        "add",
+        "correct",
+        "remove",
+        "unchanged"
+      ]
+    },
+    "action_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "corrected_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "link_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "why a less specific link is used"
+    },
+    "historical_fee": {
+      "type": "boolean",
+      "default": false
+    },
+    "field_sources": {
+      "type": "object",
+      "description": "per passport field: sources backing the value",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "description",
+          "source_used"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "source_used": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verification": {
+      "enum": [
+        "Pending",
+        "Verified",
+        "Verified with limitations",
+        "Unresolved"
+      ]
+    },
+    "verification_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "previous_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": [
+        "url",
+        "tier"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "retrieved_at": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "evidence_path": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

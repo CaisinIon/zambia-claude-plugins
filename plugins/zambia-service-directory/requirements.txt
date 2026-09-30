@@ -1,0 +1,7 @@
+openpyxl>=3.1
+requests>=2.31
+pypdf>=4.0
+rapidfuzz>=3.6
+jsonschema>=4.21
+beautifulsoup4>=4.12
+pytest>=8.0

@@ -1,0 +1,6 @@
+# Plugin content must stay LF: CRLF breaks shebangs and heredocs on macOS/Linux.
+* text=auto eol=lf
+*.sh  text eol=lf
+*.py  text eol=lf
+*.md  text eol=lf
+*.json text eol=lf

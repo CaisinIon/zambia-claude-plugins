@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "zambia": {
+      "source": {
+        "source": "github",
+        "repo": "CaisinIon/zambia-claude-plugins"
+      }
+    }
+  },
+  "enabledPlugins": [
+    "zambia-service-directory@zambia"
+  ]
+}

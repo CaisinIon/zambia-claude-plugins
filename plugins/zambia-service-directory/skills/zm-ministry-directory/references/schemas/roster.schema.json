@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "roster.schema.json",
+  "title": "Ministry roster",
+  "type": "object",
+  "required": [
+    "ministry",
+    "agencies"
+  ],
+  "properties": {
+    "ministry": {
+      "type": "object",
+      "required": [
+        "name",
+        "ministry_no"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "acronym": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "website": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ministry_no": {
+          "type": "integer"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "agencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "slug",
+          "official_name",
+          "entity_type",
+          "status",
+          "evidence"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "official_name": {
+            "type": "string"
+          },
+          "acronym": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "website": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eservices_authority_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "eservices_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eservices_match_score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "Included",
+              "Excluded"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/evidence"
+            }
+          },
+          "reassigned_services": {
+            "type": "array",
+            "description": "eServices services listed under another provider but delivered by this agency",
+            "items": {
+              "type": "object",
+              "required": [
+                "eservices_id",
+                "from_provider",
+                "reason"
+              ],
+              "properties": {
+                "eservices_id": {
+                  "type": "integer"
+                },
+                "from_provider": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "former or alternative names (incl. names used in the previous workbook)"
+          }
+        }
+      }
+    },
+    "unmatched_eservices_authorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short_name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

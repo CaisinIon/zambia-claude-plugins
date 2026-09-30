@@ -1,0 +1,41 @@
+{
+  "default_profile": "balanced",
+  "profiles": {
+    "fast": {
+      "description": "Cheapest and quickest. Sonnet verifies. Weaker on subtle wording and legal errors.",
+      "roster_model": "claude-sonnet-5-5",
+      "researcher_model": "claude-sonnet-5-5",
+      "verifier_model": "claude-sonnet-5-5",
+      "max_parallel": 6,
+      "reverify_scope": "pending",
+      "live_check": "script",
+      "verifier_chunk": 12,
+      "audit_sample": 6,
+      "audit_focus": "researcher_written"
+    },
+    "balanced": {
+      "description": "Recommended. Opus verifies; scripts do the mechanical checks; only changed passports are re-verified.",
+      "roster_model": "claude-sonnet-5-5",
+      "researcher_model": "claude-sonnet-5-5",
+      "verifier_model": "claude-opus-5-5",
+      "max_parallel": 4,
+      "reverify_scope": "pending",
+      "live_check": "script",
+      "verifier_chunk": 15,
+      "audit_sample": 12,
+      "audit_focus": "researcher_written"
+    },
+    "thorough": {
+      "description": "Most careful and most expensive. Opus researches and verifies; everything is re-verified.",
+      "roster_model": "claude-sonnet-5-5",
+      "researcher_model": "claude-opus-5-5",
+      "verifier_model": "claude-opus-5-5",
+      "max_parallel": 4,
+      "reverify_scope": "all",
+      "live_check": "llm",
+      "verifier_chunk": 0,
+      "audit_sample": 25,
+      "audit_focus": "all"
+    }
+  }
+}
