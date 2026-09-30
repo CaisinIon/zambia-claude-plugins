@@ -8,7 +8,7 @@ argument-hint: '"<Ministry Name>" [--profile fast|balanced|thorough] [--set key=
 # Zambia Ministry Service Directory
 
 Build or update `Zambia_National_Service_Directory_<Ministry_Name>.xlsx` for **exactly one ministry** per run.
-The run is autonomous: no confirmation stops. Only verified passports are written.
+After the short intake questions (Step 0), the run is autonomous: no confirmation stops. Only verified passports are written.
 
 ## Setup (every run)
 
@@ -18,6 +18,20 @@ export ZM_ROOT="$(pwd)"; python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-direct
 PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts; R=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references
 ```
 On Windows use `${CLAUDE_PLUGIN_DATA}\venv\Scripts\python.exe`. Contract and rules: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
+
+## Step 0. Intake (ask with pop-ups; only for what is missing)
+Customers do not know the flags. Before Step 1, use the **AskUserQuestion** tool to fill in whatever `$ARGUMENTS` did not give.
+Ask everything in **one** AskUserQuestion call (max 4 questions), in plain words, no flag names:
+1. **Which ministry?** Skipped if a name was given. Options: up to 3 names from the registry (`input/ministries.json`, else `templates/ministries.default.json`
+   next to the scripts), plus the built-in "Other" for typing a new name. One ministry only.
+2. **How thorough?** Skipped if `--profile` was given. Options: `Balanced (Recommended)` (normal speed and cost, verified twice where needed);
+   `Fast` (cheaper and quicker, lighter checking); `Thorough` (slowest, re-checks every service).
+3. **Is there an existing workbook to update?** Skipped if `--import` or `--resume` was given. Options: `No, start fresh (Recommended)`;
+   `Yes, I have one` (then ask once, in plain text, for its file path).
+4. **Which services to count?** Skipped if `--include-local` was given. Options: `National services only (Recommended)`; `National and Local (council) services`.
+Map the answers to the flags below (`--profile`, `--import`, `--include-local`). Do not ask about `--set`, `--ministry-no` or `--resume`; those stay flag-only.
+If AskUserQuestion is unavailable (a non-interactive session), do not ask: use the defaults above when a ministry name was given, otherwise stop and print the usage line.
+After intake, say the choices in one line, then run autonomously as before. No more questions.
 
 ## Arguments
 - `$ARGUMENTS[0]`: ministry name. If more than one ministry is given, **stop** and ask for one.

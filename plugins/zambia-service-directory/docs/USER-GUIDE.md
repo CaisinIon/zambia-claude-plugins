@@ -50,7 +50,9 @@ Commands are namespaced under the plugin: `/zambia-service-directory:zm-ministry
 
 (Plugin install: `/zambia-service-directory:zm-ministry-directory "Ministry of Tourism"`.)
 
-That is all. The run is autonomous. It does not stop to ask you anything. At the end you get a short summary and the file paths.
+You can also type just `/zm-ministry-directory` with nothing after it. Claude then asks a few plain questions in pop-ups: which ministry, how thorough, whether you have a workbook to update, and whether to count Local (council) services. You never need to know the option names.
+
+After those questions the run is autonomous. It does not stop again. At the end you get a short summary and the file paths.
 
 Common options:
 

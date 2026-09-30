@@ -14,6 +14,11 @@ export ZM_ROOT="$(pwd)"; python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-direct
 PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts
 ```
 
+## Intake (only when the workbook path is missing)
+If no workbook path was given, use **AskUserQuestion**: find `output/*/Zambia_National_Service_Directory_*.xlsx` (Glob), and offer up to 3 of the newest as options
+("Which workbook should I audit?"), plus the built-in "Other" for typing a path. Do not ask about `--sample`, `--focus` or `--verifier-model`; use the defaults.
+If AskUserQuestion is unavailable or no workbook exists, stop and print the usage line.
+
 ## Arguments
 - `$ARGUMENTS[0]`: workbook path.
 - `--run <RUN>`: the run folder that produced it. Without it, the skill creates `output/<Ministry>/audits/<timestamp>/` as `AUD`.
