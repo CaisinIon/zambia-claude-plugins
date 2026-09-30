@@ -22,8 +22,10 @@ On Windows use `${CLAUDE_PLUGIN_DATA}\venv\Scripts\python.exe`. Contract and rul
 ## Step 0. Intake (ask with pop-ups; only for what is missing)
 Customers do not know the flags. Before Step 1, use the **AskUserQuestion** tool to fill in whatever `$ARGUMENTS` did not give.
 Ask everything in **one** AskUserQuestion call (max 4 questions), in plain words, no flag names:
-1. **Which ministry?** Skipped if a name was given. Options: up to 3 names from the registry (`input/ministries.json`, else `templates/ministries.default.json`
-   next to the scripts), plus the built-in "Other" for typing a new name. One ministry only.
+1. **Which ministry?** Skipped if a name was given. Options: **only** names that are really in the registry (`input/ministries.json`, else
+   `templates/ministries.default.json` next to the scripts), at most 3, each described as "Already in the registry". **Never invent or suggest ministries
+   that are not in the registry to fill the list.** Always add one last option, "A different ministry", and if it (or the built-in "Other") is chosen,
+   ask once in plain text: "Type the ministry's full official name." One ministry only.
 2. **How thorough?** Skipped if `--profile` was given. Options: `Balanced (Recommended)` (normal speed and cost, verified twice where needed);
    `Fast` (cheaper and quicker, lighter checking); `Thorough` (slowest, re-checks every service).
 3. **Is there an existing workbook to update?** Skipped if `--import` or `--resume` was given. Options: `No, start fresh (Recommended)`;
