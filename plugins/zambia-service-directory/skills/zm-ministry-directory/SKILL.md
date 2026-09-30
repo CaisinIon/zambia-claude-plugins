@@ -14,7 +14,7 @@ After the short intake questions (Step 0), the run is autonomous: no confirmatio
 
 Work from the project root (the folder containing `input/` and `requirements.txt`).
 ```bash
-export ZM_ROOT="$(pwd)"; python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv   # creates .venv once; last line = python path
+export ZM_ROOT="$(pwd)"; if command -v uv >/dev/null 2>&1; then uv run --no-project --python 3.12 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; else python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; fi   # creates .venv once; last line = python path
 PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts; R=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references
 ```
 On Windows use `${CLAUDE_PLUGIN_DATA}\venv\Scripts\python.exe`. Contract and rules: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.

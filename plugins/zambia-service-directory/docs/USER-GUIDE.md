@@ -8,7 +8,7 @@ It runs inside Claude Code. In the Claude Desktop app, use the **Code tab**.
 
 You need:
 - The `zambia-service-directory` folder (built with `package.py`, or this project itself).
-- Python 3 on the computer. The first run sets everything else up by itself.
+- Python 3 on the computer, **or** the free `uv` tool, which downloads its own Python (recommended for customers: `curl -LsSf https://astral.sh/uv/install.sh | sh`). The first run sets everything else up by itself.
 - Internet access to `eservices.gov.zm` and to the government and legal websites.
 - Optional: the Chrome DevTools tool (`.mcp.json`) for websites that only show content with JavaScript.
 
@@ -37,7 +37,7 @@ Commands are namespaced under the plugin: `/zambia-service-directory:zm-ministry
 
 1. Copy the `zambia-service-directory` folder to where you keep projects.
 2. Open Claude Desktop, go to the **Code** tab, and choose that folder as the working folder.
-3. Ask Claude: `run export ZM_ROOT="$(pwd)"; python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv`. This creates `.venv` and installs what the tool needs. It takes about a minute and is needed once.
+3. Ask Claude: `run export ZM_ROOT="$(pwd)"; if command -v uv >/dev/null 2>&1; then uv run --no-project --python 3.12 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; else python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; fi`. This creates `.venv` and installs what the tool needs. It takes about a minute and is needed once.
 4. First check, which does not cost much: `/zambia-service-directory:zm-verify-ministry ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/templates/reference_workbook.xlsx`. It should finish with a verdict, which tells you the skills are loaded.
 
 > Not yet verified inside the Desktop app: that the three helper agents start and that the Chrome tool works. If an agent does not start, the tool plays the roles itself, one after another (slower, same rules).

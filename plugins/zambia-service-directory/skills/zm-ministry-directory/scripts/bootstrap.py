@@ -16,6 +16,10 @@ Project root and requirements.txt location:
 - Otherwise, the nearest ancestor of this file containing both `input/`
   and `requirements.txt` (the project-local dev layout), else CWD.
 
+If `uv` is on PATH, the venv is created with `uv venv --python 3.12` and packages
+are installed with `uv pip`; uv downloads Python itself when the machine has none.
+Without uv it uses the standard `venv` module and pip (needs a system python3).
+
 Venv location defaults to `<project root>/.venv`; override with `--venv`
 so a plugin install can put it under `${CLAUDE_PLUGIN_DATA}` instead of
 inside the (non-writable, replaced-on-update) plugin folder.
@@ -24,12 +28,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import venv
 from pathlib import Path
 
 REQUIRED_IMPORTS = ["openpyxl", "requests", "pypdf", "rapidfuzz", "jsonschema", "bs4"]
+UV_PYTHON = "3.12"  # used only when `uv` is available; uv downloads it if the machine has no suitable Python
 
 
 def log(level: str, msg: str) -> None:
@@ -92,14 +98,25 @@ def main() -> int:
     if not req.is_file():
         log("ERROR", f"requirements.txt not found at {req}")
         return 2
+    uv = shutil.which("uv")
+    used_uv = False
+    if not py.exists() and uv:
+        # uv fetches a private Python itself when the machine has none, so the customer needs no Python install.
+        log("INFO", f"creating venv at {venv_dir} with uv (python {UV_PYTHON})")
+        r = subprocess.run([uv, "venv", "--python", UV_PYTHON, str(venv_dir)], capture_output=True, text=True)
+        if r.returncode == 0:
+            used_uv = True
+        else:
+            log("WARN", f"uv venv failed, falling back to the standard venv module:\n{r.stdout}\n{r.stderr}")
     if not py.exists():
         log("INFO", f"creating venv at {venv_dir}")
         venv.EnvBuilder(with_pip=True).create(venv_dir)
-    log("INFO", "installing requirements")
-    res = subprocess.run(
-        [str(py), "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req)],
-        capture_output=True, text=True,
-    )
+    log("INFO", "installing requirements" + (" (uv pip)" if used_uv else ""))
+    if used_uv:
+        cmd = [uv, "pip", "install", "-q", "--python", str(py), "-r", str(req)]
+    else:
+        cmd = [str(py), "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req)]
+    res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         log("ERROR", f"pip install failed:\n{res.stdout}\n{res.stderr}")
         return 3

@@ -31,6 +31,8 @@ Run these from the project folder you want the output written into — that fold
 The first command bootstraps automatically: it creates a Python virtual environment under
 Claude Code's per-plugin data folder (`${CLAUDE_PLUGIN_DATA}/venv`, resolving to something like
 `~/.claude/plugins/data/zambia-service-directory/venv`) and installs `requirements.txt` from this plugin.
+If the free `uv` tool is installed, it also downloads a private Python for this environment, so
+no Python install is needed; without `uv` the Mac's own `python3` is used.
 That environment is separate from any `.venv` in your project; it survives plugin updates but
 not an uninstall.
 
