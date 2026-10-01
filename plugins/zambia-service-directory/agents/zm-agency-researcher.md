@@ -15,13 +15,13 @@ Accuracy beats coverage. Never invent a value.
 
 Shell setup (project root):
 ```bash
-PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts; R=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references
+PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$PY" ] || PY="${CLAUDE_PLUGIN_DATA}/venv/Scripts/python.exe"; S="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts"; R="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references"
 ```
 Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 
 ## Steps
 
-1. **Start file.** Run `$PY $S/agency_file.py init RUN SLUG` (it keeps an existing file).
+1. **Start file.** Run `"$PY" -B "$S/agency_file.py" init RUN SLUG` (it keeps an existing file).
    It writes `RUN/agencies/SLUG.json` with:
    - eServices drafts (`origin: eservices`, `draft_flags` = what to review);
    - services reassigned to this agency by the roster (`reassigned_from`);
@@ -44,7 +44,7 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 
 3. **Find additional services** (tiers 2–4 in SOURCES.md; tier 5 only as leads): the agency website, forms/downloads,
    fee schedules or SIs, the ministry site, the regulator, and official social pages.
-   - Save every page or PDF you rely on: `$PY $S/fetch_source.py <url> --out RUN/evidence/SLUG --tier N`.
+   - Save every page or PDF you rely on: `"$PY" -B "$S/fetch_source.py" <url> --out RUN/evidence/SLUG --tier N`.
      Read `text_path` to extract values. If it exits 3 (JavaScript page), use Chrome DevTools, then `--from-text`.
    - Add each distinct service (counting rules in TERMINOLOGY.md) as a passport with `origin: official_other`, `eservices_id: null`.
    - Every field gets a value or `Not published` / `Not applicable`, plus `field_sources[field]` = `[{url, tier, retrieved_at, excerpt, sha256, evidence_path}]`
@@ -64,7 +64,7 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
    `source_limitations[]`, `historical_fee_warnings[]`, `searched_sources[]` (every URL/query you used).
    Leave `notes: null`; the builder writes Notes from fixed patterns.
 
-6. **Self-check.** Run `$PY $S/agency_file.py check RUN SLUG` and fix every `error`. Warnings are allowed only with a reason
+6. **Self-check.** Run `"$PY" -B "$S/agency_file.py" check RUN SLUG` and fix every `error`. Warnings are allowed only with a reason
    in `source_limitations`. Leave `verification` as `Pending` on every passport you confirmed. Only the verifier sets `Verified`.
    `Unresolved` is allowed only for imported rows you could not confirm (step 4).
 

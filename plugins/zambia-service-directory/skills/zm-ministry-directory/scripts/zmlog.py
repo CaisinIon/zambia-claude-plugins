@@ -16,6 +16,19 @@ _FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
 _configured = False
 
 
+def use_utf8_stdio() -> None:
+    """Print UTF-8 on every OS. On Windows a piped stdout uses the ANSI code page
+    (cp1252), which cannot encode eServices text such as U+202F and crashes the script."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):  # replaced or detached stream (e.g. pytest capture)
+            pass
+
+
+use_utf8_stdio()
+
+
 def _configure_root() -> None:
     global _configured
     if _configured:

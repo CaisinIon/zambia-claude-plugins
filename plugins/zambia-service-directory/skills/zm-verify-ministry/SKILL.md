@@ -10,8 +10,8 @@ argument-hint: '<workbook.xlsx> [--run <RUN>] [--sample N] [--focus researcher_w
 Independent check of one `Zambia_National_Service_Directory_<Ministry>.xlsx`. It never edits the workbook.
 
 ```bash
-export ZM_ROOT="$(pwd)"; if command -v uv >/dev/null 2>&1; then uv run --no-project --python 3.12 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; else python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; fi
-PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts
+export ZM_ROOT="$(pwd)"; bash "${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.sh" --venv "${CLAUDE_PLUGIN_DATA}/venv"
+PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$PY" ] || PY="${CLAUDE_PLUGIN_DATA}/venv/Scripts/python.exe"; S="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts"
 ```
 
 ## Intake (only when the workbook path is missing)
@@ -30,10 +30,10 @@ Set `OUT` = RUN if given, else AUD.
 
 ## Steps
 
-1. **Format and totals.** `$PY $S/validate_workbook.py <workbook> --out OUT/workbook_audit.json --summary`
+1. **Format and totals.** `"$PY" -B "$S/validate_workbook.py" <workbook> --out OUT/workbook_audit.json --summary`
    This checks sheet order, headers, section layout, merges, styles, totals vs rows, placeholders, duplicates and formula errors.
 
-2. **Passport rules.** `$PY $S/audit.py prepare <workbook> --out OUT [--run RUN] [--sample N] [--focus F]`
+2. **Passport rules.** `"$PY" -B "$S/audit.py" prepare <workbook> --out OUT [--run RUN] [--sample N] [--focus F]`
    - It rebuilds per-agency files from the sheet rows (or uses `RUN/agencies`).
    - It runs `validate_passports.py` and re-counts eServices services against a fresh catalogue (drift).
    - It picks a random sample of `N` written rows to re-verify (with `--run`, rows changed by that run are not forced in, because the run's own verifier already checked them; use a large `--sample` for a full re-check).
@@ -43,7 +43,7 @@ Set `OUT` = RUN if given, else AUD.
    `RUN=OUT/audit` and `SLUG=<slug>`. Launch up to 4 at once.
    Rows that came from the sheet without saved evidence are checked live (WebFetch / `eservices.py service <ID>`).
 
-4. **Verdict.** `$PY $S/audit.py finish --out OUT` → writes `OUT/audit.json` and `OUT/audit.md`:
+4. **Verdict.** `"$PY" -B "$S/audit.py" finish --out OUT` → writes `OUT/audit.json` and `OUT/audit.md`:
    - **PASS**: no workbook errors, no passport-rule errors, no FAIL in the sample, and no eServices drift.
    - **FAIL**: otherwise. The report has a table of failing rows (sheet!cell, rule, message, fix) and the drift list
      (services added or removed on eServices since the workbook was built).

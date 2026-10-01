@@ -44,7 +44,7 @@ SPA_MARKERS = ("<app-root", "ng-version", "id=\"root\"></div>", "id=\"__next\"",
 def slugify(url: str) -> str:
     p = urlparse(url)
     s = re.sub(r"[^a-zA-Z0-9]+", "-", (p.netloc + p.path + ("-" + p.query if p.query else "")))
-    return s.strip("-").lower()[:70] or "source"
+    return s.strip("-").lower()[:40].strip("-") or "source"  # short: Windows paths stop at 260 characters
 
 
 def html_to_text(content: bytes, base_url: str = "") -> str:

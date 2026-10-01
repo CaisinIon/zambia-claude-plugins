@@ -93,9 +93,16 @@ LEGAL_REF_PATTERNS = [
 ]
 
 
+def file_safe_name(ministry_name: str) -> str:
+    """Ministry name as a folder/file name valid on Windows and macOS: spaces -> underscores,
+    characters Windows forbids (<>:"/\\|?*) dropped, no trailing dot or underscore."""
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", (ministry_name or "").strip()).replace(" ", "_")
+    return name.rstrip("._") or "Ministry"
+
+
 def workbook_filename(ministry_name: str) -> str:
-    """Zambia_National_Service_Directory_<Ministry_Name>.xlsx (spaces -> underscores)."""
-    return f"Zambia_National_Service_Directory_{ministry_name.strip().replace(' ', '_')}.xlsx"
+    """Zambia_National_Service_Directory_<Ministry_Name>.xlsx (see file_safe_name)."""
+    return f"Zambia_National_Service_Directory_{file_safe_name(ministry_name)}.xlsx"
 
 
 def normalise_name(text: str) -> str:

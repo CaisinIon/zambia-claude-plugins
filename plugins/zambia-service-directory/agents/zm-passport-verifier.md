@@ -18,7 +18,7 @@ You have not seen the researcher's reasoning. Judge only the file and the eviden
 - Optional `LIVE` (path to `RUN/verify/SLUG.live.json`): a script already re-fetched every eServices service of this agency fresh from the API
   and compared name, fee, processing time and validity with the file. See "Live-check file" below.
 
-Setup: `PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts; R=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references`.
+Setup: `PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$PY" ] || PY="${CLAUDE_PLUGIN_DATA}/venv/Scripts/python.exe"; S="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts"; R="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references"`.
 Read `$R/TERMINOLOGY.md` and `$R/SOURCES.md` first.
 
 ## Live-check file (when `LIVE` is given)
@@ -37,7 +37,7 @@ Always quote the source excerpt that supports `who_can_apply`, `legal_references
 | Rule | Check |
 |---|---|
 | V-SRC-1 | Each field value is supported by its `field_sources` excerpt **and** by the saved evidence text (`evidence_path` or `text.txt`, opened with Read/Grep). Wording may be summarised; numbers, fees, periods and names must match exactly. |
-| V-LIVE | Re-open ≥ 1 cited source per passport live: WebFetch the URL, or for eServices `$PY $S/eservices.py service <ID>` (skip eServices passports the `LIVE` file already marks `ok`). Confirm the key values still hold (fee, processing time, validity). If the page is down, the saved evidence decides; note it. |
+| V-LIVE | Re-open ≥ 1 cited source per passport live: WebFetch the URL, or for eServices `"$PY" -B "$S/eservices.py" service <ID>` (skip eServices passports the `LIVE` file already marks `ok`). Confirm the key values still hold (fee, processing time, validity). If the page is down, the saved evidence decides; note it. |
 | V-SRC-2 | No field rests only on tier-5 sources (LinkedIn, news, Wikipedia). |
 | V-INV | Nothing invented: every value that is not `Not published` / `Not applicable` has evidence. `Not published` is used only where the cited source was checked and is silent. |
 | V-SCOPE | It is an external public service a person or organisation applies for, books or pays for. It is not recruitment, a tender, an internal process or an information page. |
@@ -49,7 +49,7 @@ Always quote the source excerpt that supports `who_can_apply`, `legal_references
 | V-REMOVE | For `action: "remove"`: the evidence really shows a duplicate or non-service. PASS = removal confirmed. |
 
 Also check at agency level:
-- The eServices count: run `$PY $S/eservices.py agency --authority-id <each id in eservices.authority_ids> --ministry X --agency X --out RUN/verify/SLUG.eservices.json`.
+- The eServices count: run `"$PY" -B "$S/eservices.py" agency --authority-id <each id in eservices.authority_ids> --ministry X --agency X --out RUN/verify/SLUG.eservices.json`.
   Its `eservices.service_count` must equal the file's `eservices.service_count`,
   and `excluded` / `reassigned_out` reasons are sound.
 - `missing_services`: obvious public services on the agency's official site that have no passport (list the URL). Report only; do not add passports.

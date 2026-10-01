@@ -8,7 +8,12 @@ It runs inside Claude Code. In the Claude Desktop app, use the **Code tab**.
 
 You need:
 - The `zambia-service-directory` folder (built with `package.py`, or this project itself).
-- Python 3 on the computer, **or** the free `uv` tool, which downloads its own Python (recommended for customers: `curl -LsSf https://astral.sh/uv/install.sh | sh`). The first run sets everything else up by itself.
+- Python 3.10 or newer on the computer, **or** the free `uv` tool, which downloads its own Python (recommended for customers). Install uv once:
+  - macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+  The first run sets everything else up by itself.
+- Windows only: Git for Windows (Claude Code needs it to run commands). See section 2c.
 - Internet access to `eservices.gov.zm` and to the government and legal websites.
 - Optional: the Chrome DevTools tool (`.mcp.json`) for websites that only show content with JavaScript.
 
@@ -37,10 +42,23 @@ Commands are namespaced under the plugin: `/zambia-service-directory:zm-ministry
 
 1. Copy the `zambia-service-directory` folder to where you keep projects.
 2. Open Claude Desktop, go to the **Code** tab, and choose that folder as the working folder.
-3. Ask Claude: `run export ZM_ROOT="$(pwd)"; if command -v uv >/dev/null 2>&1; then uv run --no-project --python 3.12 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; else python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; fi`. This creates `.venv` and installs what the tool needs. It takes about a minute and is needed once.
+3. Ask Claude: `run export ZM_ROOT="$(pwd)"; bash "${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.sh" --venv "${CLAUDE_PLUGIN_DATA}/venv"`. This creates `.venv` and installs what the tool needs. It takes about a minute and is needed once.
 4. First check, which does not cost much: `/zambia-service-directory:zm-verify-ministry ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/templates/reference_workbook.xlsx`. It should finish with a verdict, which tells you the skills are loaded.
 
 > Not yet verified inside the Desktop app: that the three helper agents start and that the Chrome tool works. If an agent does not start, the tool plays the roles itself, one after another (slower, same rules).
+
+### 2c. Windows
+
+The tool runs the same on Windows and macOS. On Windows, check these once:
+
+| Check | Why | How |
+|---|---|---|
+| Git for Windows is installed | Claude Code runs its commands in Git Bash | https://git-scm.com/download/win |
+| uv (or Python 3.10+) is installed | Sets up the tool's Python | The PowerShell line in section 1. A Python from python.org also works. The `python3` shortcut that only opens the Microsoft Store does not count. |
+| Use a short folder, outside OneDrive | Windows refuses file paths longer than 260 characters, and OneDrive locks files while it syncs | For example `C:\zm\zambia-service-directory`. The run warns at the start if the folder path is too long. |
+| Or: turn on long paths (needs an administrator) | Removes the 260-character limit | PowerShell as administrator: `New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force`, then restart |
+| Close the workbook in Excel before a run | Windows locks a workbook that is open in Excel, so it cannot be updated | Close it; then run the last step again |
+| Optional Chrome tool: Node.js and Chrome installed | Needed only for websites that show content only with JavaScript | If its tools do not appear, add it again with the `cmd /c` wrapper: `claude mcp add chromeDevtools -- cmd /c npx -y chrome-devtools-mcp@latest --no-usage-statistics` |
 
 ## 3. Run a ministry
 
@@ -114,7 +132,7 @@ Profiles live in `input/settings.json`. Edit that file to change them for every 
 | `audit_sample` | 0 or more | How many rows the final audit re-checks. |
 | `audit_focus` | `researcher_written` or `all` | `researcher_written` samples rows that were not copied straight from eServices, since these carry the judgement calls. |
 
-To see what a profile will do before running it: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/settings.py show --profile fast`.
+To see what a profile will do before running it, ask Claude: *show what the fast profile does* (it runs `settings.py show --profile fast`).
 
 The three helper agents also have a default model in their own files (`${CLAUDE_PLUGIN_ROOT}/agents/zm-*.md`). The profile's model wins during a run.
 
@@ -201,6 +219,9 @@ Run the same command again. The tool uses the ministry's current workbook as the
 | Agents do not start in Desktop | The tool then plays each role itself (see `references/ROLES.md`). It is slower but follows the same rules. |
 | Too slow or too costly | Use `--profile fast`, or lower `audit_sample` and `verifier_chunk`. |
 | The audit says FAIL | Read `audit.md`. See section 8. |
+| `cannot write … Close the workbook in Excel` | The workbook is open in Excel (Windows locks it). Close it and run the build step again. |
+| Warning at the start: path is long (Windows) | Move the folder to a short path such as `C:\zm\`, or turn on long paths (section 2c). |
+| `no Python 3.10+ found` | Install uv (section 1) or Python 3.12, then run the command again. |
 | Something looks wrong in the workbook | Do not edit it by hand. Report it; the fix belongs in the tool's rules so every ministry benefits. |
 
 Verbose logging: set `LOG_LEVEL=DEBUG`. Add `ZM_RUN_DIR=<run folder>` to also save the log as `run.log`.

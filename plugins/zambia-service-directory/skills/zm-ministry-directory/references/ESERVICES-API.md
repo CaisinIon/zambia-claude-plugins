@@ -50,11 +50,11 @@ An empty field becomes `Not published`. Each draft carries `draft_flags` listing
 ## Commands
 
 ```bash
-PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts
-$PY $S/eservices.py catalogue                       # once per run
-$PY $S/eservices.py find-agency "Zambia Tourism Agency"
-$PY $S/eservices.py agency --authority-id <ID> [--name "<provider title>"] \
+PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$PY" ] || PY="${CLAUDE_PLUGIN_DATA}/venv/Scripts/python.exe"; S="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts"
+"$PY" -B "$S/eservices.py" catalogue                       # once per run
+"$PY" -B "$S/eservices.py" find-agency "Zambia Tourism Agency"
+"$PY" -B "$S/eservices.py" agency --authority-id <ID> [--name "<provider title>"] \
     --ministry "Ministry of Tourism" --agency "Zambia Tourism Agency (ZTA)" \
     --evidence <run>/evidence --out <run>/eservices/<slug>.json
-$PY $S/eservices.py service 96                      # raw detail for one service
+"$PY" -B "$S/eservices.py" service 96                      # raw detail for one service
 ```

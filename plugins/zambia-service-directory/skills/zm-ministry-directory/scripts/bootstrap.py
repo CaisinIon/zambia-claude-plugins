@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Create a venv and install requirements.txt. Safe to re-run.
 
-Usage: python3 bootstrap.py [--check] [--venv PATH]
+Usage: bash bootstrap.sh [--check] [--venv PATH]   (or: python bootstrap.py ...)
 Prints the venv python path on the last stdout line.
+bootstrap.sh picks uv or a working Python on macOS, Linux and Windows (Git Bash).
 Uses only the standard library so it runs before dependencies exist
 (kept independent from zmlog.py for that reason; its plugin/project root
 logic is intentionally duplicated in miniature here, not imported).
@@ -38,6 +39,20 @@ REQUIRED_IMPORTS = ["openpyxl", "requests", "pypdf", "rapidfuzz", "jsonschema", 
 UV_PYTHON = "3.12"  # used only when `uv` is available; uv downloads it if the machine has no suitable Python
 
 
+def use_utf8_stdio() -> None:
+    """Windows pipes default to cp1252; a non-ASCII venv path would crash print()."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
+
+def run(cmd: list[str]) -> subprocess.CompletedProcess:
+    # pip/uv output may not be valid in the Windows code page; never fail on decoding it.
+    return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+
 def log(level: str, msg: str) -> None:
     print(f"{level} [bootstrap] {msg}", file=sys.stderr)
 
@@ -70,10 +85,11 @@ def venv_python(venv_dir: Path) -> Path:
 
 def deps_ok(py: Path) -> bool:
     code = "import " + ",".join(REQUIRED_IMPORTS)
-    return subprocess.run([str(py), "-c", code], capture_output=True).returncode == 0
+    return run([str(py), "-c", code]).returncode == 0
 
 
 def main() -> int:
+    use_utf8_stdio()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="only report status, do not install")
     ap.add_argument("--venv", type=Path, default=None,
@@ -103,7 +119,7 @@ def main() -> int:
     if not py.exists() and uv:
         # uv fetches a private Python itself when the machine has none, so the customer needs no Python install.
         log("INFO", f"creating venv at {venv_dir} with uv (python {UV_PYTHON})")
-        r = subprocess.run([uv, "venv", "--python", UV_PYTHON, str(venv_dir)], capture_output=True, text=True)
+        r = run([uv, "venv", "--python", UV_PYTHON, str(venv_dir)])
         if r.returncode == 0:
             used_uv = True
         else:
@@ -116,7 +132,7 @@ def main() -> int:
         cmd = [uv, "pip", "install", "-q", "--python", str(py), "-r", str(req)]
     else:
         cmd = [str(py), "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req)]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = run(cmd)
     if res.returncode != 0:
         log("ERROR", f"pip install failed:\n{res.stdout}\n{res.stderr}")
         return 3

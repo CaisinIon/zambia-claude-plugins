@@ -32,12 +32,14 @@ The first command bootstraps automatically: it creates a Python virtual environm
 Claude Code's per-plugin data folder (`${CLAUDE_PLUGIN_DATA}/venv`, resolving to something like
 `~/.claude/plugins/data/zambia-service-directory/venv`) and installs `requirements.txt` from this plugin.
 If the free `uv` tool is installed, it also downloads a private Python for this environment, so
-no Python install is needed; without `uv` the Mac's own `python3` is used.
+no Python install is needed; without `uv` the computer's own Python 3.10+ (`python3`, `python` or `py`)
+is used. This works on macOS, Linux and Windows (Claude Code on Windows runs commands in Git Bash).
 That environment is separate from any `.venv` in your project; it survives plugin updates but
 not an uninstall.
 
 Optional: the bundled Chrome DevTools MCP server (`.mcp.json` in this plugin), for
-JavaScript-only ministry websites. It starts automatically via `npx`; no setup needed.
+JavaScript-only ministry websites. It starts automatically via `npx` (needs Node.js and Chrome).
+On Windows, if its tools do not appear, see the Windows section of `docs/USER-GUIDE.md`.
 
 ## Ministry numbers
 

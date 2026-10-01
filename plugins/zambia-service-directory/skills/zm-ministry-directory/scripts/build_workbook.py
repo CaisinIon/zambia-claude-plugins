@@ -265,8 +265,13 @@ def main() -> int:
         log.error("validation failed with %d errors; fix agency files or pass --allow-errors", report["errors"])
         print(json.dumps({"ok": False, "validation": report}, ensure_ascii=False, indent=2))
         return 1
-    out = args.out or project_root() / "output" / args.ministry.strip().replace(" ", "_")
-    summary = build(args.ministry, agencies, out, spec, args.import_path, roster, args.ministry_no)
+    out = args.out or project_root() / "output" / c.file_safe_name(args.ministry)
+    try:
+        summary = build(args.ministry, agencies, out, spec, args.import_path, roster, args.ministry_no)
+    except PermissionError as exc:  # Windows locks a workbook that is open in Excel
+        log.error("cannot write %s: %s. Close the workbook in Excel (or any app using it) and run this step again.",
+                  exc.filename or out, exc.strerror or exc)
+        return 3
     summary["validation"] = {"errors": report["errors"], "warnings": report["warnings"]}
     if args.report:
         dump_json(summary, args.report)

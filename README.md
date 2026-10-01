@@ -61,7 +61,7 @@ harness's own `.claude/skills/` and `.claude/agents/` in the `zambia-service-dir
 Regenerate it there:
 
 ```bash
-python3 .claude/skills/zm-ministry-directory/scripts/package.py --target plugin \
+.venv/bin/python .claude/skills/zm-ministry-directory/scripts/package.py --target plugin \
   --out /path/to/this/repo --gh-user CaisinIon
 ```
 

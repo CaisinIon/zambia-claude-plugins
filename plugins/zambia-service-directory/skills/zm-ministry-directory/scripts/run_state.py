@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,7 +33,30 @@ FINISHED = {"verified", "done", "excluded", "unresolved"}
 
 
 def ministry_dir(ministry: str) -> Path:
-    return project_root() / "output" / ministry.strip().replace(" ", "_")
+    return project_root() / "output" / c.file_safe_name(ministry)
+
+
+IS_WINDOWS = os.name == "nt"
+WINDOWS_MAX_PATH = 260
+RUN_PATH_BUDGET = 130  # longest file inside a run: evidence/<agency>/sources/<sha8>-<slug40>/meta.json
+
+
+def windows_long_paths_enabled() -> bool:
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as key:
+            return winreg.QueryValueEx(key, "LongPathsEnabled")[0] == 1
+    except OSError:
+        return False
+
+
+def path_length_warning(run: Path) -> str | None:
+    """Windows refuses paths over 260 characters unless long paths are switched on."""
+    if not IS_WINDOWS or len(str(run)) + RUN_PATH_BUDGET <= WINDOWS_MAX_PATH or windows_long_paths_enabled():
+        return None
+    return (f"project folder path is long ({len(str(run))} characters to the run folder); files may exceed the "
+            f"Windows {WINDOWS_MAX_PATH}-character limit. Move the project to a short folder such as C:\\zm\\ "
+            "or turn on Windows long paths (see docs/USER-GUIDE.md, Windows).")
 
 
 def init(ministry: str, import_path: Path | None, include_local: bool, ministry_no: int | None,
@@ -65,7 +89,12 @@ def init(ministry: str, import_path: Path | None, include_local: bool, ministry_
     dump_json({"agencies": {}}, run / "progress.json")
     log.info("run initialised %s ministry=%s no=%d previous=%s profile=%s", run, name, number, previous,
              resolved["profile"])
-    return {"run": str(run), **meta, "existing_agencies": existing}
+    out = {"run": str(run), **meta, "existing_agencies": existing}
+    warning = path_length_warning(run)
+    if warning:
+        log.warning(warning)
+        out["warnings"] = [warning]
+    return out
 
 
 def set_state(run: Path, slug: str, state: str, note: str | None) -> dict:

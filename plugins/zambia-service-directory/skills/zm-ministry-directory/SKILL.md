@@ -14,10 +14,11 @@ After the short intake questions (Step 0), the run is autonomous: no confirmatio
 
 Work from the project root (the folder containing `input/` and `requirements.txt`).
 ```bash
-export ZM_ROOT="$(pwd)"; if command -v uv >/dev/null 2>&1; then uv run --no-project --python 3.12 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; else python3 ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.py --venv ${CLAUDE_PLUGIN_DATA}/venv; fi   # creates .venv once; last line = python path
-PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python -B"; S=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts; R=${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references
+export ZM_ROOT="$(pwd)"; bash "${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/bootstrap.sh" --venv "${CLAUDE_PLUGIN_DATA}/venv"   # creates .venv once; last line = python path
+PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$PY" ] || PY="${CLAUDE_PLUGIN_DATA}/venv/Scripts/python.exe"; S="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts"; R="${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/references"
 ```
-On Windows use `${CLAUDE_PLUGIN_DATA}\venv\Scripts\python.exe`. Contract and rules: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
+Same commands on macOS, Linux and Windows (Claude Code runs them in Git Bash there).
+**Quote every path** (`"$PY" -B "$S/x.py" "RUN"`): Windows folders often contain spaces. Contract and rules: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 
 ## Step 0. Intake (ask with pop-ups; only for what is missing)
 Customers do not know the flags. Before Step 1, use the **AskUserQuestion** tool to fill in whatever `$ARGUMENTS` did not give.
@@ -44,7 +45,7 @@ After intake, say the choices in one line, then run autonomously as before. No m
 - `--set key=value` (repeatable): override one setting, e.g. `--set verifier_model=opus --set max_parallel=6`.
   Keys: `roster_model`, `researcher_model`, `verifier_model`, `max_parallel`, `reverify_scope` (pending|all), `live_check` (script|llm),
   `verifier_chunk`, `audit_sample`, `audit_focus` (researcher_written|all).
-- `--resume <RUN>`: continue an interrupted run (skip steps 1–2; `$PY $S/run_state.py pending RUN` lists what is left).
+- `--resume <RUN>`: continue an interrupted run (skip steps 1–2; `"$PY" -B "$S/run_state.py" pending RUN` lists what is left).
 - `--ministry-no N`: override the registry number (normally taken from `input/ministries.json`, or the next free number).
 
 ## Workflow
@@ -55,51 +56,52 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 ```
 
 1. **Init run**
-   `$PY $S/run_state.py init --ministry "<name>" [--profile P] [--set k=v ...] [--import X] [--include-local] [--ministry-no N]`
+   `"$PY" -B "$S/run_state.py" init --ministry "<name>" [--profile P] [--set k=v ...] [--import X] [--include-local] [--ministry-no N]`
    Keep `run` (= RUN), `ministry`, `ministry_no`, `existing_agencies` and `settings` (= SET) from its JSON output.
    Tell the user the profile and the models in one line. It also caches today's eServices catalogue.
    Use `SET.<key>` below. Pass `model: SET.<role>_model` on every Agent call for that role.
    If it prints `ERROR [ministry-no]`, stop and show the error (the registry file needs fixing).
+   If the JSON has `warnings` (e.g. a Windows path that is too long), show them to the user once, then continue.
 
 2. **Roster.** Start the `zambia-service-directory:zm-roster-builder` agent (`model: SET.roster_model`) with RUN, the ministry, MINISTRY_NO, and `existing_agencies`.
-   Then for each agency: `$PY $S/run_state.py set RUN <slug> pending`, or `excluded` for Excluded ones.
+   Then for each agency: `"$PY" -B "$S/run_state.py" set RUN <slug> pending`, or `excluded` for Excluded ones.
 
 3. **Research.** For each pending Included slug:
-   `$PY $S/agency_file.py init RUN <slug>`, then start a `zambia-service-directory:zm-agency-researcher` agent (`model: SET.researcher_model`) with `RUN` and `SLUG`.
+   `"$PY" -B "$S/agency_file.py" init RUN <slug>`, then start a `zambia-service-directory:zm-agency-researcher` agent (`model: SET.researcher_model`) with `RUN` and `SLUG`.
    Launch up to `SET.max_parallel` researchers in one message. Start the next agency as soon as one finishes.
    When one returns:
-   - run `$PY $S/agency_file.py check RUN <slug>`;
+   - run `"$PY" -B "$S/agency_file.py" check RUN <slug>`;
    - if errors remain, send the researcher the findings once (`REPAIR` = the check findings);
    - then `run_state.py set RUN <slug> researched`.
 
 4. **Verify** each researched agency as soon as it is ready (pipeline, don't wait for all). One verification round is:
-   1. If `SET.live_check` is `script`: `$PY $S/agency_file.py live-check RUN <slug>` (fresh eServices comparison, about 20–70 s).
+   1. If `SET.live_check` is `script`: `"$PY" -B "$S/agency_file.py" live-check RUN <slug>` (fresh eServices comparison, about 20–70 s).
       Pass `LIVE=RUN/verify/<slug>.live.json` to the verifiers.
-   2. `$PY $S/agency_file.py plan-verify RUN <slug> --scope <S> --chunk SET.verifier_chunk` with `<S>` = `all` for the first round and
+   2. `"$PY" -B "$S/agency_file.py" plan-verify RUN <slug> --scope <S> --chunk SET.verifier_chunk` with `<S>` = `all` for the first round and
       `SET.reverify_scope` for the round after a repair. It returns the passport indices per part.
    3. Start one `zambia-service-directory:zm-passport-verifier` (`model: SET.verifier_model`, fresh context, it must not see the researcher's log) per part, all in one message,
       each with `RUN`, `SLUG`, `INDICES`, `PART` (and `LIVE`). With a single part, omit `PART` and `INDICES` when the scope is `all`.
-   4. With several parts: `$PY $S/agency_file.py merge-verdicts RUN <slug>`.
-   5. `$PY $S/agency_file.py apply-verdict RUN <slug>`.
+   4. With several parts: `"$PY" -B "$S/agency_file.py" merge-verdicts RUN <slug>`.
+   5. `"$PY" -B "$S/agency_file.py" apply-verdict RUN <slug>`.
    If `repair > 0`: set the ledger to `repair`, move the round-1 verdict aside (`verify/<slug>.round1.json`), start a researcher with
    `REPAIR` = the `verification_notes` starting with `REPAIR:`, run one more verification round (scope `SET.reverify_scope`), then
    `apply-verdict RUN <slug> --final`. At most one repair round. Then set the ledger to `verified`, or `unresolved` if every passport failed.
 
-5. **Ministry-wide check.** `$PY $S/validate_passports.py RUN/agencies/*.json --out RUN/validation.json`.
+5. **Ministry-wide check.** `"$PY" -B "$S/validate_passports.py" RUN/agencies/*.json --out RUN/validation.json`.
    Cross-agency errors (R-DUP-ID, R-REASSIGN) are fixed by one targeted researcher call for the agency named in the finding.
 
-6. **Build.** `$PY $S/build_workbook.py --ministry "<ministry>" --agencies RUN/agencies/*.json --roster RUN/roster.json --ministry-no <no> [--import X] --report RUN/build.json`
+6. **Build.** `"$PY" -B "$S/build_workbook.py" --ministry "<ministry>" --agencies RUN/agencies/*.json --roster RUN/roster.json --ministry-no <no> [--import X] --report RUN/build.json`
    The previous workbook is archived to `versions/` automatically.
    Exit 1 means validation errors: fix them (step 5), never pass `--allow-errors` in a normal run.
 
-7. **Validate the workbook.** `$PY $S/validate_workbook.py <workbook> --out RUN/workbook_validation.json --summary`.
+7. **Validate the workbook.** `"$PY" -B "$S/validate_workbook.py" <workbook> --out RUN/workbook_validation.json --summary`.
    It must be `ok: true` for the rows this run wrote. Rows carried over from an older workbook may still fail
    (e.g. `Not specified`). They are listed in the report as not re-checked.
 
 8. **Audit.** Run `/zambia-service-directory:zm-verify-ministry <workbook> --run RUN --sample SET.audit_sample --focus SET.audit_focus --verifier-model SET.verifier_model`.
    It writes `RUN/audit.json` and `RUN/audit.md`.
 
-9. **Report.** `$PY $S/report.py RUN` → `RUN/report.md`. Then set all ledger entries to `done`.
+9. **Report.** `"$PY" -B "$S/report.py" RUN` → `RUN/report.md`. Then set all ledger entries to `done`.
 
 ## Final message to the user
 - One line: `<Ministry>: <total> passports (+added / ~corrected / −removed), <n> agencies, audit PASS|FAIL`.
