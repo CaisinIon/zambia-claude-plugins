@@ -59,8 +59,9 @@ ENTITY_TYPES = [
     "Government Department", "Statutory Agency", "Statutory Commission",
     "Statutory Board", "Statutory Council", "Statutory Authority", "Statutory Institute",
 ]
-VERIFICATION = ["Pending", "Verified", "Verified with limitations", "Unresolved"]
-WRITABLE_VERIFICATION = {"Verified", "Verified with limitations"}
+DOTGOV_VERIFICATION = "DotGov placeholder"
+VERIFICATION = ["Pending", "Verified", "Verified with limitations", "Unresolved", DOTGOV_VERIFICATION]
+WRITABLE_VERIFICATION = {"Verified", "Verified with limitations", DOTGOV_VERIFICATION}
 ORIGINS = ["eservices", "official_other", "imported"]
 ACTIONS = ["add", "correct", "remove", "unchanged"]
 
@@ -74,6 +75,15 @@ SOURCE_TIERS = {
 }
 MAX_CITABLE_TIER = 4
 
+# DotGov-owned services (scripts/dotgov_registry.py): not researched; placeholder per field.
+DOTGOV_FIELDS = [
+    "who_can_apply", "eligibility_requirements", "fee", "processing_time", "validity", "legal_references",
+]
+DOTGOV_MARKER = "FROM DOTGOV [{agency} - {service_name}]"
+DOTGOV_TOKEN = "{{{{DOTGOV:{service_id}:{field}}}}}"
+DOTGOV_MATCH = 90      # name score >= this: same service, do not research
+DOTGOV_POSSIBLE = 80   # name score >= this: researcher decides and logs why
+
 ESERVICES_SERVICE_URL = "https://eservices.gov.zm/#/service/{id}"
 ESERVICES_DIRECTORY_URL = "https://eservices.gov.zm/#/service-directory/national"
 
@@ -83,6 +93,7 @@ NOTES_LISTED_ONLY = "{total} verified services, all on Zambia eServices"
 NOTES_NOT_LISTED = "{total} services verified from {other_source}; not listed on Zambia eServices"
 NOTES_LISTED_UNDER = "{total} services; listed under {provider} on Zambia eServices"
 NOTES_NONE = "0 services verified; {reason}"
+NOTES_DOTGOV_SUFFIX = "; {dotgov} from DotGov (data to be filled)"
 
 LEGAL_REF_PATTERNS = [
     re.compile(r"Act,?\s+No\.?\s*\d+,?\s+(of\s+)?\d{4}", re.I),

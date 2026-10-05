@@ -24,11 +24,13 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 1. **Start file.** Run `"$PY" -B "$S/agency_file.py" init RUN SLUG` (it keeps an existing file).
    It writes `RUN/agencies/SLUG.json` with:
    - eServices drafts (`origin: eservices`, `draft_flags` = what to review);
+   - **DotGov placeholders** (`verification: "DotGov placeholder"`, a `dotgov` record): services DotGov built.
+     Their data comes from the DotGov database later. **Do not open, edit, research or verify them.**
    - services reassigned to this agency by the roster (`reassigned_from`);
    - previous-workbook rows: `previous_row` on matched drafts, or `origin: imported` passports that you must re-check.
    The exact eServices count is already recorded in `eservices.service_count`. Do not change it.
 
-2. **Review every eServices draft** (eServices is the primary source for its services):
+2. **Review every eServices draft** (eServices is the primary source for its services). Skip DotGov placeholders:
    - Summarise `eligibility_requirements` to 1–3 sentences (conditions + key documents), in the reference style.
    - Normalise `legal_references` to exact titles with number and year (`Tourism and Hospitality Act No. 13 of 2015`).
      Drop non-legislation (guidelines). Drop an Act as repealed only after reading the repealing Act's savings and transitional clauses:
@@ -46,12 +48,19 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
    fee schedules or SIs, the ministry site, the regulator, and official social pages.
    - Save every page or PDF you rely on: `"$PY" -B "$S/fetch_source.py" <url> --out RUN/evidence/SLUG --tier N`.
      Read `text_path` to extract values. If it exits 3 (JavaScript page), use Chrome DevTools, then `--from-text`.
+   - **Before adding any service, check it is not a DotGov service** (names can differ a little):
+     `"$PY" -B "$S/dotgov_registry.py" match --run RUN --slug SLUG --agency "<official name>" --name "<service name as found>"`
+     - `match` → do not add it and do not research it. Log `skip DotGov <service_id>: <found name> ≈ <DotGov name> (score)`.
+     - `possible` → decide. If it is the same service, skip it as above. If it is a different service, add it with
+       `dotgov_distinct_reason` and log the reason either way.
+     - `none` → continue.
    - Add each distinct service (counting rules in TERMINOLOGY.md) as a passport with `origin: official_other`, `eservices_id: null`.
    - Every field gets a value or `Not published` / `Not applicable`, plus `field_sources[field]` = `[{url, tier, retrieved_at, excerpt, sha256, evidence_path}]`
      (use `sha256` and `text_path` from fetch_source's output). For `Not published`, cite the source you checked.
    - `source_link` = the most specific official URL (see Source-recording method in TERMINOLOGY.md).
 
-4. **Re-check imported rows** (`origin: imported`, from the previous workbook).
+4. **Re-check imported rows** (`origin: imported`, from the previous workbook). Run the same DotGov `match` first:
+   a DotGov service gets `action: "remove"` with `action_reason: "DotGov service <service_id>"`.
    - If confirmed by an official source: set the values, add `field_sources`, keep `origin: imported`,
      and replace `Not specified` with `Not published` only for fields you checked.
    - If a duplicate or not a public service: set `action: "remove"` with `action_reason` citing the evidence.
@@ -68,7 +77,8 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
    in `source_limitations`. Leave `verification` as `Pending` on every passport you confirmed. Only the verifier sets `Verified`.
    `Unresolved` is allowed only for imported rows you could not confirm (step 4).
 
-7. Write `RUN/logs/SLUG.md`: queries, sources opened (tier), services accepted or rejected with the reason, and conflicts.
+7. Write `RUN/logs/SLUG.md`: queries, sources opened (tier), services accepted or rejected with the reason,
+   DotGov skips (`skip DotGov …` lines), and conflicts.
 
 ## Hard rules
 - Do not invent missing information. `Not published` = the official source was checked and does not say.
@@ -79,6 +89,7 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 - Old fees: `Historical fee — current amount requires confirmation. <year> <source>: <amount>` + `historical_fee: true`.
 - Cite exact legislation title, number and year where available.
 - In a repair round, change only what `REPAIR` lists. Answer each finding in `verification_notes`.
+- Never change a DotGov placeholder, and never research a service that `dotgov_registry.py match` reports as `match`.
 
 ## Output
-Final message, one line: `SLUG: E eServices + O other + I imported (R to remove), errors=0, warnings=W`.
+Final message, one line: `SLUG: E eServices (D DotGov) + O other + I imported (R to remove), errors=0, warnings=W`.

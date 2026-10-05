@@ -28,6 +28,10 @@ If AskUserQuestion is unavailable or no workbook exists, stop and print the usag
 
 Set `OUT` = RUN if given, else AUD.
 
+**DotGov placeholders are expected, not failures.** Cells such as `FROM DOTGOV [Department of Tourism - Casino Licence] {{DOTGOV:96:fee}}`
+mark services DotGov built; their data is filled later from the DotGov database. They are counted (`dotgov_rows`, `dotgov_placeholders`),
+never sampled for re-verification, and only a malformed token (`W-DOTGOV`, `R-DOTGOV`) is an error.
+
 ## Steps
 
 1. **Format and totals.** `"$PY" -B "$S/validate_workbook.py" <workbook> --out OUT/workbook_audit.json --summary`
@@ -49,4 +53,5 @@ Set `OUT` = RUN if given, else AUD.
      (services added or removed on eServices since the workbook was built).
 
 ## Final message
-`<workbook>: audit PASS|FAIL — W workbook errors, P passport errors, S/N sampled rows failed, D eServices drift`, plus the path of `audit.md`.
+`<workbook>: audit PASS|FAIL — W workbook errors, P passport errors, S/N sampled rows failed, D eServices drift, G DotGov placeholders`,
+plus the path of `audit.md`.

@@ -9,7 +9,7 @@ from referencing import Registry, Resource
 from zmlog import get_logger, load_json, references_dir
 
 log = get_logger("schema")
-SCHEMA_NAMES = ["passport", "agency", "roster", "ministries"]
+SCHEMA_NAMES = ["passport", "agency", "roster", "ministries", "dotgov_services"]
 
 
 @lru_cache(maxsize=1)

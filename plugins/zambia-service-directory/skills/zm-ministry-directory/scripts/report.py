@@ -16,6 +16,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import dotgov_registry
 import zmcontract as c
 from zmlog import get_logger, load_json
 
@@ -51,11 +52,12 @@ def render(run: Path) -> str:
              f"- Previous version archived: `{build.get('previous_version')}`", ""]
     if build:
         lines += ["## Totals", "",
-                  "| Added | Corrected | Removed | Unchanged | Carried over (not re-checked) | Unresolved | Ministry total |",
-                  "|---|---|---|---|---|---|---|",
+                  "| Added | Corrected | Removed | Unchanged | Carried over (not re-checked) | Unresolved "
+                  "| DotGov placeholders | Ministry total |",
+                  "|---|---|---|---|---|---|---|---|",
                   f"| {build.get('added', 0)} | {build.get('corrected', 0)} | {build.get('removed', 0)} | "
                   f"{build.get('unchanged', 0)} | {build.get('carried_over', 0)} | {build.get('unresolved', 0)} | "
-                  f"**{build.get('ministry_total', 0)}** |", ""]
+                  f"{build.get('dotgov_placeholders', 0)} | **{build.get('ministry_total', 0)}** |", ""]
     status = []
     if wbv is not None:
         status.append(f"Workbook validation: {'PASS' if wbv.get('ok') else 'FAIL'} "
@@ -76,7 +78,9 @@ def render(run: Path) -> str:
         written = (build.get("per_agency") or {}).get(name, 0)
         running += written
         live = [p for p in a.get("passports", []) if p.get("action") != "remove"]
-        es_ok = [p for p in live if p.get("origin") == "eservices" and p.get("verification") in c.WRITABLE_VERIFICATION]
+        dotgov = [p for p in live if dotgov_registry.is_placeholder(p)]
+        es_ok = [p for p in live if p.get("origin") == "eservices" and p.get("verification") in c.WRITABLE_VERIFICATION
+                 and not dotgov_registry.is_placeholder(p)]
         other = [p for p in live if p.get("origin") == "official_other" and p.get("verification") in c.WRITABLE_VERIFICATION]
         conflicts = [f"{p['service_name']}: {x['field']} — {x['description']} (used: {x['source_used']})"
                      for p in live for x in p.get("conflicts", [])]
@@ -91,6 +95,8 @@ def render(run: Path) -> str:
             + (f"; excluded {len(es.get('excluded', []))}" if es.get("excluded") else "")
             + (f"; reassigned to other agencies {len(es.get('reassigned_out', []))}" if es.get("reassigned_out") else ""),
             f"- **Services verified on eServices:** {len(es_ok)}",
+            f"- **DotGov services (placeholders, not researched):** {len(dotgov)}"
+            + (f" — IDs {', '.join(str(p['eservices_id']) for p in dotgov)}" if dotgov else ""),
             "- **Corrected service passports:**", _bullets(corrected),
             "- **Additional services from other official sources:**", _bullets([p["service_name"] for p in other]),
             "- **Source limitations or conflicting information:**",
@@ -106,6 +112,18 @@ def render(run: Path) -> str:
             lines += ["- Unresolved (not written):", _bullets(unresolved)]
         if removed:
             lines += ["- Removed:", _bullets(removed)]
+        lines.append("")
+    dg_all = [(files[s]["official_name"], p) for s in slugs for p in files[s].get("passports", [])
+              if p.get("action") != "remove" and dotgov_registry.is_placeholder(p)]
+    if dg_all:
+        lines += ["## DotGov services (fill from the DotGov database)", "",
+                  f"{len(dg_all)} passports hold `{{{{DOTGOV:<ServiceID>:<field>}}}}` tokens. Export these ServiceIDs "
+                  "from the DotGov database and run `dotgov_fill.py fill <workbook> --data <export>`.", "",
+                  "| Agency | ServiceIDs |", "|---|---|"]
+        by_agency: dict[str, list[int]] = {}
+        for name, p in dg_all:
+            by_agency.setdefault(name, []).append(p["eservices_id"])
+        lines += [f"| {name} | {', '.join(map(str, sorted(ids)))} |" for name, ids in by_agency.items()]
         lines.append("")
     carried = [ch for ch in changes if ch["change"] == "carried_over"]
     if carried:

@@ -9,7 +9,7 @@ Usage:
 
 Previous state = the current workbook in --out (it is first copied to versions/),
 otherwise --import. Only passports with verification Verified / Verified with
-limitations are written. A previous row is removed only by an explicit
+limitations / DotGov placeholder are written. A previous row is removed only by an explicit
 action=remove passport; other previous rows that no agency file mentions are
 kept and reported as 'carried_over'.
 
@@ -27,6 +27,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import dotgov_registry
 import zmcontract as c
 import ministries as reg
 from validate_passports import validate
@@ -74,9 +75,18 @@ def match_previous(prev_rows: list[dict], p: dict, used: set[int], aliases: tupl
     return None
 
 
+def dotgov_suffix(passports: list[dict]) -> str:
+    n = sum(1 for p in passports if dotgov_registry.is_placeholder(p))
+    return c.NOTES_DOTGOV_SUFFIX.format(dotgov=n) if n else ""
+
+
 def notes_for(agency: dict, rows: list[dict], passports: list[dict]) -> str:
     if agency.get("notes"):
         return agency["notes"]
+    return _notes_core(agency, rows, passports) + dotgov_suffix(passports)
+
+
+def _notes_core(agency: dict, rows: list[dict], passports: list[dict]) -> str:
     total = len(rows)
     es = [p for p in passports if p.get("origin") == "eservices"]
     moved_in = [p for p in es if p.get("reassigned_from")]
@@ -122,7 +132,9 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
     agencies = sorted(agencies, key=position)
 
     used: set[int] = set()
-    changes, counts = [], {"added": 0, "corrected": 0, "removed": 0, "unchanged": 0, "carried_over": 0, "unresolved": 0}
+    changes, counts = [], {"added": 0, "corrected": 0, "removed": 0, "unchanged": 0, "carried_over": 0, "unresolved": 0,
+                           "dotgov_placeholders": 0}
+    dotgov_per_agency: dict[str, int] = {}
     sections, agency_rows, per_agency = [], [], {}
 
     for a in agencies:
@@ -155,6 +167,10 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
                 kind = "added"
                 changes.append({"change": "added", "agency": a["official_name"], "service": row["service_name"]})
             counts[kind] += 1
+            if dotgov_registry.is_placeholder(p):
+                changes[-1]["dotgov"] = True
+                counts["dotgov_placeholders"] += 1
+                dotgov_per_agency[a["official_name"]] = dotgov_per_agency.get(a["official_name"], 0) + 1
             rows.append(row)
             written.append(p)
         per_agency[a["official_name"]] = len(rows)
@@ -209,6 +225,7 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
             total = len(section["rows"])
             row_a["notes"] = (c.NOTES_LISTED.format(total=total, eservices=len(written_es), other=total - len(written_es), other_source=label)
                               if written_es else c.NOTES_NOT_LISTED.format(total=total, other_source=label))
+            row_a["notes"] += dotgov_suffix(src.get("passports", []))
             row_a["notes"] += f"; {carried} kept from the previous workbook without re-check"
     known = {s["agency"] for s in sections}
     for pa in prev.get("agencies", []):
@@ -233,11 +250,12 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
     summary = {**counts, "ministry_total": total, "ministry_no": ministry_no,
                "agencies_included": sum(1 for a in agency_rows if a["status"] == "Included"),
                "per_agency": {s["agency"]: len(s["rows"]) for s in sections},
+               "dotgov_per_agency": dotgov_per_agency,
                "workbook": str(target), "previous_version": str(version_path) if version_path else None,
                "previous_state": str(prev_path) if prev_path else None, "changes": changes}
-    log.info("build done added=%d corrected=%d removed=%d unchanged=%d carried_over=%d unresolved=%d total=%d",
-             counts["added"], counts["corrected"], counts["removed"], counts["unchanged"],
-             counts["carried_over"], counts["unresolved"], total)
+    log.info("build done added=%d corrected=%d removed=%d unchanged=%d carried_over=%d unresolved=%d "
+             "dotgov_placeholders=%d total=%d", counts["added"], counts["corrected"], counts["removed"],
+             counts["unchanged"], counts["carried_over"], counts["unresolved"], counts["dotgov_placeholders"], total)
     return summary
 
 
@@ -260,7 +278,8 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as exc:
         log.error("bad input: %s", exc)
         return 2
-    report = validate(agencies)
+    # the run folder is the parent of agencies/: honour its --no-dotgov choice
+    report = validate(agencies, dotgov_registry.for_run_dir(args.agencies[0].resolve().parent.parent))
     if not report["ok"] and not args.allow_errors:
         log.error("validation failed with %d errors; fix agency files or pass --allow-errors", report["errors"])
         print(json.dumps({"ok": False, "validation": report}, ensure_ascii=False, indent=2))

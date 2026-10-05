@@ -3,7 +3,7 @@
 
 Usage:
   run_state.py init --ministry "<Name>" [--import X.xlsx] [--include-local] [--ministry-no N]
-                    [--profile fast|balanced|thorough] [--set key=value ...]
+                    [--profile fast|balanced|thorough] [--set key=value ...] [--no-dotgov]
   run_state.py set <RUN> <slug> <state> [--note "..."]
   run_state.py show <RUN>
   run_state.py pending <RUN>            slugs not yet verified/done/excluded (one per line)
@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import zmcontract as c
+import dotgov_registry
 import ministries as reg
 import settings as cfg
 from eservices import load_catalogue
@@ -60,7 +61,7 @@ def path_length_warning(run: Path) -> str | None:
 
 
 def init(ministry: str, import_path: Path | None, include_local: bool, ministry_no: int | None,
-         profile: str | None = None, overrides: dict | None = None) -> dict:
+         profile: str | None = None, overrides: dict | None = None, dotgov: bool = True) -> dict:
     resolved = cfg.resolve(profile, overrides)  # fail early on a bad profile or setting
     entry = reg.lookup(ministry, reg.default_registry())
     name = entry["name"]
@@ -80,15 +81,18 @@ def init(ministry: str, import_path: Path | None, include_local: bool, ministry_
         existing = [{"name": a.get("Entity"), "entity_type": a.get("Entity Type"), "rows": counts.get(a.get("Entity"), 0),
                      "notes": a.get("Notes"), "source_link": a.get("Source Link")} for a in wb["agencies"]]
     catalogue = load_catalogue()
+    registry = dotgov_registry.load() if dotgov else None
+    dotgov_meta = ({"enabled": True, "path": registry["_path"], "sha256": registry["source"]["sha256"],
+                    "services": len(registry["services"])} if registry else {"enabled": False})
     meta = {"ministry": name, "ministry_input": ministry, "ministry_no": number, "ministry_no_assigned": entry["assigned"],
             "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "previous_state": str(previous) if previous else None, "include_local": include_local,
             "catalogue_fetched_at": catalogue.get("fetched_at"), "workbook": str(current),
-            "settings": resolved}
+            "settings": resolved, "dotgov": dotgov_meta}
     dump_json(meta, run / "run.json")
     dump_json({"agencies": {}}, run / "progress.json")
-    log.info("run initialised %s ministry=%s no=%d previous=%s profile=%s", run, name, number, previous,
-             resolved["profile"])
+    log.info("run initialised %s ministry=%s no=%d previous=%s profile=%s dotgov=%s", run, name, number, previous,
+             resolved["profile"], dotgov_meta.get("services", "off"))
     out = {"run": str(run), **meta, "existing_agencies": existing}
     warning = path_length_warning(run)
     if warning:
@@ -128,6 +132,7 @@ def main() -> int:
     ip.add_argument("--ministry-no", type=int)
     ip.add_argument("--profile", help="fast | balanced | thorough (default from input/settings.json)")
     ip.add_argument("--set", dest="sets", action="append", default=[], help="override one setting: key=value")
+    ip.add_argument("--no-dotgov", action="store_true", help="research DotGov services too (no placeholders)")
     sp = sub.add_parser("set")
     sp.add_argument("run", type=Path)
     sp.add_argument("slug")
@@ -140,7 +145,8 @@ def main() -> int:
     try:
         if args.cmd == "init":
             print(json.dumps(init(args.ministry, args.import_path, args.include_local, args.ministry_no,
-                                  args.profile, cfg.parse_overrides(args.sets)), ensure_ascii=False, indent=2))
+                                  args.profile, cfg.parse_overrides(args.sets), dotgov=not args.no_dotgov),
+                             ensure_ascii=False, indent=2))
         elif args.cmd == "set":
             print(json.dumps(set_state(args.run, args.slug, args.state, args.note), ensure_ascii=False))
         elif args.cmd == "show":

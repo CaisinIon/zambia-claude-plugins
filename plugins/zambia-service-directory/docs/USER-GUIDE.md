@@ -138,17 +138,23 @@ The three helper agents also have a default model in their own files (`${CLAUDE_
 
 ## 6. Ministry numbers
 
-`input/ministries.json` lists each ministry's number:
+`input/ministries.json` lists all 27 ministries with their numbers (Tourism is 3; the rest are numbered alphabetically):
 
 ```json
 [
+  {"ministry_no": 1, "name": "Ministry of Agriculture", "acronym": "MoA", "website": "https://www.agriculture.gov.zm"},
   {"ministry_no": 3, "name": "Ministry of Tourism", "acronym": "MoT", "website": "https://www.mot.gov.zm"}
 ]
 ```
 
-- Replace it with your own list at any time. Only `ministry_no` and `name` are required.
+- When you start a run without a ministry name, the tool prints this list and asks for a number or name.
+- Replace the file with your own list at any time. Only `ministry_no` and `name` are required.
 - A ministry that is not in the file gets the next free number (highest + 1), and the file is updated so it never changes.
 - Two ministries with the same number or name stop the run with an error.
+
+**DotGov services by ministry.** `input/dotgov_services.json` lists every service DotGov built (423), grouped by ministry and agency, each by its name.
+To read it without opening the file: `"$PY" ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/dotgov_registry.py show` (all ministries) or `show --ministry "Ministry of Tourism"` (its services by name).
+The agency → ministry assignment (with sources) is in `templates/dotgov_ministries.json`.
 
 ## 7. Where the results are
 
@@ -188,6 +194,7 @@ Read the table in `audit.md`. It says what to fix and where.
 | Historical fee | A fee from an old source. The exact label is "Historical fee — current amount requires confirmation". |
 | Excluded | The agency has no public-facing service (for example only an information page). |
 | Reassigned | An eServices service listed under one agency but delivered by another. It is counted once, under the agency that delivers it. |
+| FROM DOTGOV [agency - service] {{DOTGOV:96:fee}} | A service DotGov built. It was not researched, because DotGov already has its data. The `{{…}}` token says which service (96) and field (fee) to fill from the DotGov database. See section 9a. |
 
 ## 9. What to do after a run
 
@@ -196,6 +203,27 @@ Read the table in `audit.md`. It says what to fix and where.
 3. For unresolved rows: ask the agency for the source, or remove the row (delete it from the workbook, or say so in the next run).
 4. Run again later with the same command to update. The old workbook is kept in `versions/`.
 5. Share `report.md` or the summary with the team.
+
+### 9a. DotGov services: fill the placeholders
+
+Services DotGov built (every service on Zambia eServices) are skipped during research. Their cells hold a placeholder.
+Service Name and Description are already filled in from the DotGov list.
+
+1. In `report.md`, the section **DotGov services (fill from the DotGov database)** lists the ServiceIDs per agency.
+2. Export those services from the DotGov database to CSV or JSON. Use one row per service, with a `ServiceID` column and any of
+   `Who Can Apply`, `Eligibility Requirements`, `Fee`, `Processing Time`, `Validity`, `Legal References`.
+   The field keys (`who_can_apply`, `fee`, …) also work.
+3. Run:
+   ```bash
+   "$PY" ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/dotgov_fill.py fill "output/<Ministry>/Zambia_National_Service_Directory_<Ministry>.xlsx" --data export.csv
+   ```
+   This writes `…_filled.xlsx` next to the workbook. Your workbook is not changed. The command also prints how many cells it filled,
+   which values were missing (those cells keep their placeholder), and which ServiceIDs were not in the workbook.
+4. A new run rebuilds the placeholders, so run the fill again after every run.
+
+**Refresh the DotGov list** (after DotGov adds or renames services): run the query from the Excel's Sheet2 again, save it as Excel, then
+`"$PY" ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/dotgov_registry.py extract "<path to the Excel>"`.
+**To research DotGov services anyway**, run with `--no-dotgov`.
 
 ## 10. Updating a ministry later
 

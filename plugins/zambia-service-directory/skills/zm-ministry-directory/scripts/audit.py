@@ -23,6 +23,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import dotgov_registry
 import zmcontract as c
 from eservices import agency_services, find_agency, load_catalogue
 from validate_passports import validate
@@ -48,10 +49,17 @@ def agencies_from_sheet(data: dict) -> list[dict]:
         passports = []
         for r in rows:
             sid = eservices_id_from_link(r.get("source_link"))
-            passports.append({**{f: (r.get(f) if r.get(f) is not None else "") for f in c.PASSPORT_FIELDS},
-                              "origin": "eservices" if sid else "official_other", "eservices_id": sid,
-                              "action": "unchanged", "field_sources": {}, "conflicts": [],
-                              "verification": "Verified", "sheet_row": r["row"]})
+            p = {**{f: (r.get(f) if r.get(f) is not None else "") for f in c.PASSPORT_FIELDS},
+                 "origin": "eservices" if sid else "official_other", "eservices_id": sid,
+                 "action": "unchanged", "field_sources": {}, "conflicts": [],
+                 "verification": "Verified", "sheet_row": r["row"]}
+            cells = [dotgov_registry.parse_cell(r.get(f)) for f in c.DOTGOV_FIELDS]
+            first = next((x for x in cells if x), None)
+            if first:  # DotGov placeholder row (fully or partly unfilled)
+                p["verification"] = c.DOTGOV_VERIFICATION
+                p["dotgov"] = {"service_id": first["service_id"], "agency": first["agency"],
+                               "service_name": first["service_name"], "match": "id", "from_sheet": True}
+            passports.append(p)
         out.append({"ministry": ministry, "ministry_no": a.get("Ministry No.") or 0, "official_name": name,
                     "entity_type": a.get("Entity Type"), "status": a.get("Status") or "Included",
                     "digitizable_service_areas": a.get("Digitizable Service Areas") or "",
@@ -113,15 +121,18 @@ def prepare(workbook: Path, out: Path, run: Path | None, sample_n: int, seed: in
     else:
         agencies = agencies_from_sheet(data)
         changed = set()
-    report = validate(agencies)
+    report = validate(agencies, dotgov_registry.for_run_dir(run) if run else "auto")
     findings = [f for f in report["findings"] if run or f["rule"] not in SHEET_ONLY_SKIP]
     errors = [f for f in findings if f["severity"] == "error"]
 
     rng = random.Random(seed)
-    pool, picked = [], []
+    pool, picked, n_dotgov = [], [], 0
     for a in agencies:
         for p in a.get("passports", []):
             if p.get("action") == "remove" or p.get("verification") not in c.WRITABLE_VERIFICATION:
+                continue
+            if dotgov_registry.is_placeholder(p):  # DotGov data: not re-verified
+                n_dotgov += 1
                 continue
             key = (a["official_name"], c.normalise_name(p["service_name"]))
             (picked if key in changed else pool).append((a, p))
@@ -146,10 +157,10 @@ def prepare(workbook: Path, out: Path, run: Path | None, sample_n: int, seed: in
               "prepared_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "passport_errors": len(errors), "passport_warnings": len(findings) - len(errors),
               "findings": findings, "drift": drift(agencies, catalogue, bool(run)),
-              "sample": sample, "sample_size": len(picked)}
+              "sample": sample, "sample_size": len(picked), "dotgov_placeholders": n_dotgov}
     dump_json(result, out / "audit_prepare.json")
-    log.info("prepared audit: errors=%d drift=%d sample=%d agencies=%d", len(errors), len(result["drift"]),
-             len(picked), len(sample))
+    log.info("prepared audit: errors=%d drift=%d sample=%d agencies=%d dotgov_placeholders=%d", len(errors),
+             len(result["drift"]), len(picked), len(sample), n_dotgov)
     return result
 
 
@@ -167,7 +178,8 @@ def finish(out: Path) -> dict:
     result = {"verdict": "PASS" if ok else "FAIL", "workbook": prep["workbook"], "workbook_errors": wb_errors,
               "passport_errors": prep["passport_errors"], "sample_size": prep["sample_size"],
               "sample_failed": len(failed), "sample_limited": len(limited), "drift": prep["drift"],
-              "missing_verdicts": missing_verdicts, "failed": failed}
+              "missing_verdicts": missing_verdicts, "failed": failed,
+              "dotgov_placeholders": prep.get("dotgov_placeholders", 0)}
     dump_json(result, out / "audit.json")
 
     lines = [f"# Audit — {prep.get('ministry')}", "", f"**Verdict: {result['verdict']}**", "",
@@ -176,7 +188,9 @@ def finish(out: Path) -> dict:
              + (f" ({', '.join(f'{k} {v}' for k, v in wb['by_rule'].items())})" if wb and wb.get("by_rule") else ""),
              f"- Passport rule errors: {prep['passport_errors']} (warnings {prep['passport_warnings']})",
              f"- Re-verified rows: {prep['sample_size']} — failed {len(failed)}, with limits {len(limited)}",
-             f"- eServices drift: {len(prep['drift'])}", ""]
+             f"- eServices drift: {len(prep['drift'])}",
+             f"- DotGov placeholders (not re-verified; filled from the DotGov database): "
+             f"{prep.get('dotgov_placeholders', 0)}", ""]
     if missing_verdicts:
         lines += [f"- ⚠️ No verifier result for: {', '.join(missing_verdicts)}", ""]
     if wb and wb["errors"]:

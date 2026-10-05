@@ -32,6 +32,9 @@ You still check everything the script cannot: eligibility, who can apply, legal 
 
 Always quote the source excerpt that supports `who_can_apply`, `legal_references` and `eligibility_requirements` in your notes when you pass a passport. A value you cannot tie to an excerpt is not verified.
 
+DotGov placeholders (`verification: "DotGov placeholder"`) are never in `INDICES` and are not verified: DotGov already
+holds their data. Do not give them a verdict. They still count in the agency's eServices count.
+
 ## Checks per passport (index = position in `passports[]`)
 
 | Rule | Check |

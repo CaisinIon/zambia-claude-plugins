@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dotgov_services.schema.json",
+  "title": "DotGov service registry",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "placeholder",
+    "agencies",
+    "services"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "file",
+        "sha256",
+        "extracted_at",
+        "rows"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "extracted_at": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "query": {
+          "type": "string"
+        }
+      }
+    },
+    "placeholder": {
+      "type": "object",
+      "required": [
+        "marker",
+        "token",
+        "fields"
+      ],
+      "properties": {
+        "marker": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "agencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "key",
+          "service_count",
+          "service_ids"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "key": {
+            "type": "string"
+          },
+          "service_count": {
+            "type": "integer"
+          },
+          "service_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "ministry": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "service_id",
+          "name",
+          "name_key",
+          "description",
+          "agency",
+          "agency_key",
+          "eservices_link"
+        ],
+        "properties": {
+          "service_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name_key": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agency_key": {
+            "type": "string"
+          },
+          "eservices_link": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "ministry": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

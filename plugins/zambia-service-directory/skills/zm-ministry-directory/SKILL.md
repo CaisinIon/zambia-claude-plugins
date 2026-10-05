@@ -8,7 +8,9 @@ argument-hint: '"<Ministry Name>" [--profile fast|balanced|thorough] [--set key=
 # Zambia Ministry Service Directory
 
 Build or update `Zambia_National_Service_Directory_<Ministry_Name>.xlsx` for **exactly one ministry** per run.
-After the short intake questions (Step 0), the run is autonomous: no confirmation stops. Only verified passports are written.
+After the short intake questions (Step 0), the run is autonomous: no confirmation stops. Only verified passports are written,
+plus **DotGov placeholders**: services DotGov built (`templates/dotgov_services.json`, see `$R/TERMINOLOGY.md` → DotGov services)
+are not researched or verified. Their fields hold `FROM DOTGOV [<agency> - <service>] {{DOTGOV:<id>:<field>}}`, filled later from the DotGov database.
 
 ## Setup (every run)
 
@@ -23,10 +25,10 @@ Same commands on macOS, Linux and Windows (Claude Code runs them in Git Bash the
 ## Step 0. Intake (ask with pop-ups; only for what is missing)
 Customers do not know the flags. Before Step 1, use the **AskUserQuestion** tool to fill in whatever `$ARGUMENTS` did not give.
 Ask everything in **one** AskUserQuestion call (max 4 questions), in plain words, no flag names:
-1. **Which ministry?** Skipped if a name was given. Options: **only** names that are really in the registry (`input/ministries.json`, else
-   `templates/ministries.default.json` next to the scripts), at most 3, each described as "Already in the registry". **Never invent or suggest ministries
-   that are not in the registry to fill the list.** Always add one last option, "A different ministry", and if it (or the built-in "Other") is chosen,
-   ask once in plain text: "Type the ministry's full official name." One ministry only.
+1. **Which ministry?** Skipped if a name was given. The registry (`input/ministries.json`, else `templates/ministries.default.json` next to the scripts)
+   lists every ministry. **Print the full numbered list of its ministries as plain text first** (`<no>. <name>`, sorted by number), then ask which one.
+   If the registry has 3 or fewer ministries, offer them as options. If it has more, ask in plain text: "Type the number or the full name of the ministry."
+   Always accept a ministry that is not in the list (it gets the next free number). **Never invent ministries.** One ministry only.
 2. **How thorough?** Skipped if `--profile` was given. Options: `Balanced (Recommended)` (normal speed and cost, verified twice where needed);
    `Fast` (cheaper and quicker, lighter checking); `Thorough` (slowest, re-checks every service).
 3. **Is there an existing workbook to update?** Skipped if `--import` or `--resume` was given. Options: `No, start fresh (Recommended)`;
@@ -47,6 +49,7 @@ After intake, say the choices in one line, then run autonomously as before. No m
   `verifier_chunk`, `audit_sample`, `audit_focus` (researcher_written|all).
 - `--resume <RUN>`: continue an interrupted run (skip steps 1–2; `"$PY" -B "$S/run_state.py" pending RUN` lists what is left).
 - `--ministry-no N`: override the registry number (normally taken from `input/ministries.json`, or the next free number).
+- `--no-dotgov`: research DotGov services like any other (no placeholders). Flag-only; never ask about it.
 
 ## Workflow
 
@@ -56,9 +59,10 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 ```
 
 1. **Init run**
-   `"$PY" -B "$S/run_state.py" init --ministry "<name>" [--profile P] [--set k=v ...] [--import X] [--include-local] [--ministry-no N]`
+   `"$PY" -B "$S/run_state.py" init --ministry "<name>" [--profile P] [--set k=v ...] [--import X] [--include-local] [--ministry-no N] [--no-dotgov]`
    Keep `run` (= RUN), `ministry`, `ministry_no`, `existing_agencies` and `settings` (= SET) from its JSON output.
-   Tell the user the profile and the models in one line. It also caches today's eServices catalogue.
+   Tell the user the profile and the models in one line. It also caches today's eServices catalogue and records the DotGov
+   registry in `RUN/run.json` (`dotgov.services`; `enabled: false` with `--no-dotgov`).
    Use `SET.<key>` below. Pass `model: SET.<role>_model` on every Agent call for that role.
    If it prints `ERROR [ministry-no]`, stop and show the error (the registry file needs fixing).
    If the JSON has `warnings` (e.g. a Windows path that is too long), show them to the user once, then continue.
@@ -68,6 +72,8 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 
 3. **Research.** For each pending Included slug:
    `"$PY" -B "$S/agency_file.py" init RUN <slug>`, then start a `zambia-service-directory:zm-agency-researcher` agent (`model: SET.researcher_model`) with `RUN` and `SLUG`.
+   `init` turns every DotGov service into a placeholder without fetching it; the researcher only looks for other services
+   and skips web-found ones that `dotgov_registry.py match` reports as DotGov.
    Launch up to `SET.max_parallel` researchers in one message. Start the next agency as soon as one finishes.
    When one returns:
    - run `"$PY" -B "$S/agency_file.py" check RUN <slug>`;
@@ -78,7 +84,8 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
    1. If `SET.live_check` is `script`: `"$PY" -B "$S/agency_file.py" live-check RUN <slug>` (fresh eServices comparison, about 20–70 s).
       Pass `LIVE=RUN/verify/<slug>.live.json` to the verifiers.
    2. `"$PY" -B "$S/agency_file.py" plan-verify RUN <slug> --scope <S> --chunk SET.verifier_chunk` with `<S>` = `all` for the first round and
-      `SET.reverify_scope` for the round after a repair. It returns the passport indices per part.
+      `SET.reverify_scope` for the round after a repair. It returns the passport indices per part. DotGov placeholders are never
+      included (`dotgov_skipped`). If `to_verify` is 0, skip steps 3–5 for this agency (the live check already confirmed the count).
    3. Start one `zambia-service-directory:zm-passport-verifier` (`model: SET.verifier_model`, fresh context, it must not see the researcher's log) per part, all in one message,
       each with `RUN`, `SLUG`, `INDICES`, `PART` (and `LIVE`). With a single part, omit `PART` and `INDICES` when the scope is `all`.
    4. With several parts: `"$PY" -B "$S/agency_file.py" merge-verdicts RUN <slug>`.
@@ -108,6 +115,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 - A short per-agency table: agency | eServices count | passports | verifier result.
 - Paths of the workbook, `report.md` and `audit.md`.
 - Anything unresolved or carried over, and why.
+- The number of DotGov placeholders and the fill command (`"$PY" -B "$S/dotgov_fill.py" fill <workbook> --data <export>`).
 
 ## Rules
 - One ministry per run. Never mix ministries in one workbook.
@@ -115,6 +123,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 - Never write a value without an official source (tiers 1–4). Tier 5 (LinkedIn, news) is for leads only.
 - Never hand-edit the workbook. Always go through `build_workbook.py`, so every ministry file keeps the identical format from `templates/workbook_spec.json`.
 - Missing information is written as `Not published`. Never invent a value.
+- Never research, verify or edit a DotGov placeholder. After the run, `dotgov_fill.py` fills them from a DotGov database export.
 - Ministry numbers live in `input/ministries.json`. Unknown ministries get the next free number.
 - If subagents are unavailable, play the roles yourself as described in `$R/ROLES.md`.
 - Logs: set `LOG_LEVEL=DEBUG` for verbose script output. `ZM_RUN_DIR=RUN` also writes `RUN/run.log`.

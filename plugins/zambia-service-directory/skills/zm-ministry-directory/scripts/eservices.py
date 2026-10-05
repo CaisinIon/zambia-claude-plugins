@@ -5,8 +5,9 @@ Commands:
   catalogue [--refresh]                         cache authorities + services for today
   find-agency "<name or acronym>" [--limit 8]   fuzzy-match eServices providers
   agency --authority-id ID [--authority-id ID] [--name "Provider"] --ministry M --agency A
-         [--include-local] [--evidence DIR] [--out FILE]
+         [--include-local] [--evidence DIR] [--out FILE] [--no-dotgov]
                                                 exact service count + passport drafts
+                                                (DotGov services: placeholders, no detail fetch)
   service <ID> [--evidence DIR]                 one service's raw detail (info, lex, docs)
 
 API base: $ZM_ESERVICES_API (default https://zigsapi.eservices.gov.zm/).
@@ -32,8 +33,9 @@ from rapidfuzz import fuzz
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+import dotgov_registry
 import zmcontract as c
-from zmlog import dump_json, get_logger, load_json, project_root
+from zmlog import dump_json, get_logger, kv, load_json, project_root
 
 log = get_logger("eservices")
 
@@ -351,14 +353,53 @@ def to_passport(row: dict, detail: dict, ministry: str, agency: str,
     return passport
 
 
+def to_dotgov_placeholder(row: dict, service: dict, ministry: str, agency: str, registry: dict) -> dict:
+    """Placeholder passport for a DotGov-owned service: no detail fetch, no research, no verification.
+
+    Name and description come from the DotGov registry; DOTGOV_FIELDS carry marker + token
+    for a later database fill (dotgov_fill.py).
+    """
+    sid = row["ID"]
+    link = c.ESERVICES_SERVICE_URL.format(id=sid)
+    src = registry.get("source") or {}
+    name = service["name"]
+    desc = service.get("description") or clean_text(row.get("Description")) or c.NOT_PUBLISHED
+    excerpt = f"DotGov registry {src.get('file')} ServiceID {sid}"
+    source = [{"url": link, "tier": 1, "retrieved_at": src.get("extracted_at") or "", "excerpt": excerpt,
+               "sha256": src.get("sha256") or ""}]
+    passport = {
+        "ministry": ministry, "agency": agency, "service_name": name, "service_description": desc,
+        **{f: dotgov_registry.placeholder(service, f) for f in c.DOTGOV_FIELDS},
+        "source_link": link, "origin": "eservices", "eservices_id": sid,
+        "reassigned_from": None, "reassignment_reason": None,
+        "action": "add", "action_reason": None, "historical_fee": False,
+        "field_sources": {"service_name": source, "service_description": source},
+        "conflicts": [], "verification": c.DOTGOV_VERIFICATION,
+        "verification_notes": "DotGov service: not researched; fields filled later from the DotGov database",
+        "dotgov": {"service_id": sid, "agency": service["agency"], "service_name": name, "match": "id",
+                   "registry_sha256": src.get("sha256")},
+        "eservices_meta": {"provider": row.get("AuthorityId_ReferenceTitle"), "is_available": row.get("IsAvailable"),
+                           "type_of_service": row.get("TypeOfService")},
+    }
+    log.debug("dotgov skip %s", kv(id=sid, name=name, dotgov_agency=service["agency"], agency=agency))
+    return passport
+
+
 # ---------------------------------------------------------------- commands
 
 def build_agency(catalogue: dict, authority_ids: list[str], names: list[str], ministry: str, agency: str,
-                 include_local: bool, evidence_dir: Path | None, detail_dir: Path | None = None) -> dict:
+                 include_local: bool, evidence_dir: Path | None, detail_dir: Path | None = None,
+                 dotgov: dict | None = None) -> dict:
+    """Exact eServices count + passports. Services in the DotGov registry become placeholders
+    (still counted in service_ids/service_count); only the others are fetched as drafts."""
     rows = agency_services(catalogue, authority_ids, names, include_local)
-    log.info("agency=%r authority_ids=%s names=%s services=%d", agency, authority_ids, names, len(rows))
+    owned = dotgov_registry.by_id(dotgov)
+    log.info("agency=%r authority_ids=%s names=%s services=%d dotgov=%d", agency, authority_ids, names, len(rows),
+             sum(1 for r in rows if r["ID"] in owned))
 
     def work(row):
+        if row["ID"] in owned:
+            return to_dotgov_placeholder(row, owned[row["ID"]], ministry, agency, dotgov)
         detail = fetch_detail(row["ID"], detail_dir)
         ev_path = ev_sha = None
         if evidence_dir:
@@ -407,6 +448,7 @@ def main() -> int:
     ag.add_argument("--include-local", action="store_true")
     ag.add_argument("--evidence", type=Path)
     ag.add_argument("--out", type=Path)
+    ag.add_argument("--no-dotgov", action="store_true", help="draft DotGov services too (no placeholders)")
     sp = sub.add_parser("service")
     sp.add_argument("id", type=int)
     sp.add_argument("--evidence", type=Path)
@@ -426,7 +468,8 @@ def main() -> int:
                 log.error("give --authority-id and/or --name")
                 return 2
             data = build_agency(load_catalogue(), args.authority_id, args.name, args.ministry, args.agency,
-                                args.include_local, args.evidence)
+                                args.include_local, args.evidence,
+                                dotgov=None if args.no_dotgov else dotgov_registry.load())
             _emit(data, args.out)
         elif args.cmd == "service":
             detail = fetch_detail(args.id)

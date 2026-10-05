@@ -24,6 +24,24 @@ Deprecated values, which are rewritten when a row is written:
 Only write `Not published` after the official sources were actually checked for that field.
 If a row could not be re-checked, set `verification = "Unresolved"`. An unresolved passport is not written.
 
+## DotGov services (placeholders)
+
+DotGov built the services in `templates/dotgov_services.json`; their ServiceID equals the eServices ID.
+They are **not researched and not verified**. Each one gets a placeholder passport:
+
+| Item | Exact text |
+|---|---|
+| `verification` value | `DotGov placeholder` |
+| Marker | `FROM DOTGOV [{agency} - {service_name}]` |
+| Token | `{{{{DOTGOV:{service_id}:{field}}}}}` (Python format string; renders as `{{DOTGOV:96:fee}}`) |
+
+- Service Name and Service Description come from the DotGov list.
+- Who Can Apply, Eligibility Requirements, Fee, Processing Time, Validity and Legal References hold
+  `<marker> <token>`, e.g. `FROM DOTGOV [Department of Tourism - Casino Licence] {{DOTGOV:96:fee}}`.
+- `{agency}` is the DotGov (ZIGS) agency name, which can differ from the official agency name.
+- `scripts/dotgov_fill.py` later replaces each cell holding a token with the value from a DotGov database export.
+- A placeholder passport is written to the workbook. It is the one exception to "only verified passports are written".
+
 Historical fees: put the historical-fee label first, then the old amount and its year,
 e.g. `Historical fee — current amount requires confirmation. 2019 schedule: ZMW 150`.
 
@@ -44,6 +62,9 @@ Pick the first pattern that fits. `{other_source}` is a short label, e.g. `the D
 | Not listed | `{total} services verified from {other_source}; not listed on Zambia eServices` |
 | None found | `0 services verified; {reason}` |
 
+When the agency has DotGov placeholder rows, append `; {dotgov} from DotGov (data to be filled)` to the chosen pattern.
+The leading number still counts every written row, placeholders included.
+
 ## Counting methodology
 
 1. One eServices service entry (one eServices ID) = one passport.
@@ -59,6 +80,9 @@ Pick the first pattern that fits. `{other_source}` is a short label, e.g. `the D
 6. Exact eServices count = number of **National** services for the provider's authority IDs
    returned by the API on the run date. Local council services are counted only with `--include-local`.
 7. Totals are always computed from the rows actually written. They are never typed in by hand.
+8. A DotGov placeholder counts as one eServices passport of its agency (it keeps `origin: eservices` and its eServices ID).
+   A service found on the web that `dotgov_registry.py match` reports as `match` for a DotGov service is the same service:
+   it gets no passport of its own.
 
 ## Inclusion / exclusion
 

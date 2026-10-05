@@ -25,6 +25,9 @@ Rule ids (severity):
   R-DRAFT (warn)      draft_flags left on a passport marked Verified
   R-PENDING (warn)    passport not yet verified
   R-REMOVE (error)    removal without action_reason (removed passports skip all other passport rules)
+  R-DOTGOV (error)    DotGov placeholder malformed (status, ID, marker/token), or a token in a normal passport
+  R-DOTGOV-DUP (error) web/imported service name-matches a DotGov service of the agency (warn: possible match,
+                      or dotgov_distinct_reason given)
 """
 from __future__ import annotations
 
@@ -35,6 +38,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+import dotgov_registry
 import zmcontract as c
 from zmlog import dump_json, get_logger, load_json
 from zmschema import schema_errors
@@ -91,6 +95,60 @@ def _is_placeholder(value: str) -> bool:
     return value in c.PLACEHOLDERS
 
 
+def check_dotgov(p: dict, agency: dict, f: Findings) -> bool:
+    """R-DOTGOV. Returns True when p is a well-formed DotGov placeholder (its fields need no sources)."""
+    name = agency.get("official_name", "?")
+    if not dotgov_registry.is_placeholder(p):
+        for field in c.PASSPORT_FIELDS:
+            if dotgov_registry.ANY_TOKEN_RE.search(str(p.get(field) or "")):
+                f.add("R-DOTGOV", "error", name, f"{field} holds a DotGov token but the passport is not a DotGov "
+                      "placeholder", p, fix="remove the token, or rebuild the passport with agency_file.py init")
+        return False
+    dg = p.get("dotgov")
+    if not dg:
+        f.add("R-DOTGOV", "error", name, f"verification {c.DOTGOV_VERIFICATION!r} without a dotgov record", p)
+        return False
+    ok = True
+    sid = p.get("eservices_id")
+    if p.get("verification") != c.DOTGOV_VERIFICATION:
+        f.add("R-DOTGOV", "error", name, f"DotGov passport has verification {p.get('verification')!r}", p,
+              fix=c.DOTGOV_VERIFICATION)
+        ok = False
+    if p.get("origin") != "eservices" or sid != dg.get("service_id"):
+        f.add("R-DOTGOV", "error", name, f"DotGov passport must have origin 'eservices' and eservices_id "
+              f"{dg.get('service_id')} (has {p.get('origin')!r}/{sid})", p)
+        ok = False
+    service = {"service_id": dg.get("service_id"), "agency": dg.get("agency"), "name": dg.get("service_name")}
+    for field in c.DOTGOV_FIELDS:
+        value = str(p.get(field) or "").strip()
+        if dg.get("from_sheet"):  # rebuilt from a workbook: a filled cell is fine, a token must fit the row
+            cell = dotgov_registry.parse_cell(value)
+            bad = (cell and (cell["service_id"] != sid or cell["field"] != field)) or \
+                (not cell and dotgov_registry.ANY_TOKEN_RE.search(value))
+        else:
+            bad = value != dotgov_registry.placeholder(service, field)
+        if bad:
+            f.add("R-DOTGOV", "error", name, f"{field} is not the DotGov placeholder for service {sid}: {value!r}", p,
+                  fix=None if dg.get("from_sheet") else dotgov_registry.placeholder(service, field))
+            ok = False
+    return ok
+
+
+def check_dotgov_dup(p: dict, agency: dict, registry: dict | None, f: Findings) -> None:
+    """R-DOTGOV-DUP: a service found on the web / carried over that is really a DotGov service."""
+    if not registry or dotgov_registry.is_placeholder(p) or p.get("origin") not in ("official_other", "imported"):
+        return
+    m = dotgov_registry.match(registry, agency, p.get("service_name") or "")
+    if m["status"] == "none":
+        return
+    reason = p.get("dotgov_distinct_reason")
+    severity = "error" if m["status"] == "match" and not reason else "warn"
+    f.add("R-DOTGOV-DUP", severity, agency.get("official_name", "?"),
+          f"{p.get('service_name')!r} is a {m['status']} for DotGov service {m['service_id']} {m['name']!r} "
+          f"({m['agency']}, score {m['score']})" + (f"; distinct: {reason}" if reason else ""), p,
+          fix=None if reason else f"remove it (DotGov service {m['service_id']}), or set dotgov_distinct_reason")
+
+
 def check_passport(p: dict, agency: dict, f: Findings) -> None:
     name = agency.get("official_name", "?")
     for err in schema_errors(p, "passport"):
@@ -99,6 +157,7 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
         f.add("R-AGENCY", "error", name,
               f"passport ministry/agency {p.get('ministry')!r}/{p.get('agency')!r} != agency file", p)
 
+    dotgov_ok = check_dotgov(p, agency, f)
     sources = p.get("field_sources") or {}
     for field in c.PASSPORT_FIELDS:
         value = str(p.get(field) or "").strip()
@@ -109,6 +168,8 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
             f.add("R-TERM-VAGUE", "warn", name, f"{field} has vague value {value!r}", p,
                   fix=f"{c.NOT_PUBLISHED} (if checked) or the real value")
     for field in c.SOURCED_FIELDS:
+        if dotgov_ok and field in c.DOTGOV_FIELDS:
+            continue  # DotGov database values, filled later
         value = str(p.get(field) or "").strip()
         tiers = [s.get("tier", 9) for s in sources.get(field, [])]
         if _is_placeholder(value):
@@ -126,7 +187,7 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
         f.add("R-FEE-HIST", "warn", name, "fee labelled historical but historical_fee=false", p)
 
     legal = str(p.get("legal_references") or "")
-    if legal and not _is_placeholder(legal):
+    if legal and not _is_placeholder(legal) and not dotgov_ok:
         for part in [x.strip() for x in legal.split(";") if x.strip()]:
             if not any(pat.search(part) for pat in c.LEGAL_REF_PATTERNS):
                 f.add("R-LAW", "warn", name, f"legal reference without Act/SI/Cap number: {part!r}", p)
@@ -148,7 +209,7 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
         f.add("R-PENDING", "warn", name, "passport not verified yet", p)
 
 
-def check_agency(agency: dict, f: Findings) -> None:
+def check_agency(agency: dict, f: Findings, registry: dict | None = None) -> None:
     name = agency.get("official_name", "?")
     stripped = {k: v for k, v in agency.items() if k != "passports"}
     for err in schema_errors({**stripped, "passports": []}, "agency"):
@@ -172,6 +233,7 @@ def check_agency(agency: dict, f: Findings) -> None:
                 f.add("R-REMOVE", "error", name, "action=remove without action_reason", p)
             continue
         check_passport(p, agency, f)
+        check_dotgov_dup(p, agency, registry, f)
 
     # duplicates by name inside the agency
     for i, a in enumerate(passports):
@@ -228,10 +290,13 @@ def check_ministry(agencies: list[dict], f: Findings) -> None:
                     log.debug("reassignment source %r not among given agency files", src)
 
 
-def validate(agencies: list[dict]) -> dict:
+def validate(agencies: list[dict], registry: dict | None | str = "auto") -> dict:
+    """registry: the DotGov registry for R-DOTGOV-DUP; "auto" loads the default, None skips the rule."""
+    if registry == "auto":
+        registry = dotgov_registry.load()
     f = Findings()
     for a in agencies:
-        check_agency(a, f)
+        check_agency(a, f, registry)
     check_ministry(agencies, f)
     errors = sum(1 for x in f.items if x["severity"] == "error")
     warnings = len(f.items) - errors
@@ -243,6 +308,7 @@ def validate(agencies: list[dict]) -> dict:
             "eservices": sum(1 for p in live if p.get("origin") == "eservices"),
             "other": sum(1 for p in live if p.get("origin") != "eservices"),
             "writable": sum(1 for p in live if p.get("verification") in c.WRITABLE_VERIFICATION),
+            "dotgov_placeholders": sum(1 for p in live if dotgov_registry.is_placeholder(p)),
             "eservices_count": (a.get("eservices") or {}).get("service_count", 0),
         }
     log.info("validation done agencies=%d errors=%d warnings=%d", len(agencies), errors, warnings)

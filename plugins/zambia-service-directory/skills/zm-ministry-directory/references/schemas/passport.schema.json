@@ -159,7 +159,8 @@
         "Pending",
         "Verified",
         "Verified with limitations",
-        "Unresolved"
+        "Unresolved",
+        "DotGov placeholder"
       ]
     },
     "verification_notes": {
@@ -173,6 +174,51 @@
         "string",
         "null"
       ]
+    },
+    "dotgov": {
+      "type": "object",
+      "description": "DotGov-owned service: placeholder passport, filled later from the DotGov database",
+      "required": [
+        "service_id",
+        "agency",
+        "service_name"
+      ],
+      "properties": {
+        "service_id": {
+          "type": "integer"
+        },
+        "agency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "service_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "match": {
+          "enum": [
+            "id",
+            "name"
+          ]
+        },
+        "registry_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from_sheet": {
+          "type": "boolean",
+          "description": "rebuilt from a workbook by audit.py (fields may already be filled)"
+        }
+      }
+    },
+    "dotgov_distinct_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "why a service that name-matches a DotGov service is a different service (downgrades R-DOTGOV-DUP to a warning)"
     }
   },
   "$defs": {

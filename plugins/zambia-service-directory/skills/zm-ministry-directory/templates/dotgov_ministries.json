@@ -1,0 +1,433 @@
+{
+ "as_of": "2026-10-05",
+ "basis": "Portfolio allocation per Gazette Notice No. 1123 of 2021 ('The Statutory Functions, Portfolios and Composition of Government', 24 Sep 2021). No later portfolio Gazette Notice was found. The ministry names and websites were checked on each ministry's site on 2026-10-05. After the 13 Aug 2026 election, President Hichilema (sworn in 2 Sep 2026) had appointed only 4 cabinet ministers by 14 Sep 2026 (Finance, Health, Foreign Affairs, Green Economy) [cabinet.gov.zm/?p=11727]. Most portfolios were still unfilled on 5 Oct 2026, and no ministry was announced as renamed, merged or created. A new portfolio Gazette Notice could follow the full cabinet announcement; re-check then.",
+ "note": "Agency names are DotGov (ZIGS) names. Re-check when a new portfolio gazette notice is issued.",
+ "agencies": {
+  "Cadastre Department": {
+   "ministry": "Ministry of Mines and Minerals Development",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mmmd.gov.zm/",
+    "https://eservices.gov.zm/#/service/99"
+   ],
+   "note": "Mining Cadastre Department of MMMD (site lists 'Mining Cadastre'; eServices ShortName MMMD; GN subject 'Cadastral Survey and Exploration'). Since the Minerals Regulation Commission Act No. 14 of 2024 came into force (3 Jun 2025), MRC grants mining rights; MRC also reports to MMMD."
+  },
+  "Competition and Consumer Protection Commission": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/"
+   ],
+   "note": "Statutory body under Competition and Consumer Protection Act No. 24 of 2010; listed under MCTI in GN 1123 and on MCTI site."
+  },
+  "Customs Department": {
+   "ministry": "Ministry of Finance and National Planning",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.zra.org.zm/about-us/"
+   ],
+   "note": "ZRA Customs and Excise division (customs clearance certificate). ZRA (Cap. 321) and Customs and Excise Act Cap. 322 are under MoFNP per GN 1123."
+  },
+  "Department of Agribusiness and Marketing": {
+   "ministry": "Ministry of Agriculture",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.agriculture.gov.zm/"
+   ],
+   "note": "MoA department ('Agribusiness & Marketing' on MoA site; address Mulungushi House). GN subject 'Agricultural Marketing Policy'."
+  },
+  "Department of Fisheries": {
+   "ministry": "Ministry of Fisheries and Livestock",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mfl.gov.zm/"
+   ],
+   "note": "MFL department; Fisheries Act No. 22 of 2011 under MFL."
+  },
+  "Department of Fisheries and Livestock Marketing": {
+   "ministry": "Ministry of Fisheries and Livestock",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mfl.gov.zm/"
+   ],
+   "note": "MFL site lists department 'Fisheries And Livestock Marketing' (livestock import/export/transit permits)."
+  },
+  "Department of Hostels Board of Management": {
+   "ministry": "Ministry of Tourism",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mot.gov.zm/"
+   ],
+   "note": "Hostels Board of Management, statutory body/department of MoT (GN 1123 and MoT site). Confirmed."
+  },
+  "Department of Immigration": {
+   "ministry": "Ministry of Home Affairs and Internal Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mohais.gov.zm/"
+   ],
+   "note": "Immigration and Deportation Act No. 18 of 2010 under MoHAIS; listed as MoHAIS department."
+  },
+  "Department of Livestock Development": {
+   "ministry": "Ministry of Fisheries and Livestock",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mfl.gov.zm/"
+   ],
+   "note": "MFL department ('Livestock Development' on MFL site)."
+  },
+  "Department of Local Government": {
+   "ministry": "Ministry of Local Government and Rural Development",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlgrd.gov.zm/",
+    "https://eservices.gov.zm/#/service/601"
+   ],
+   "note": "DotGov's umbrella name for local-council services (property rates, business levy, markets, health permits) delivered by councils such as Lusaka City Council (eServices ShortName LGD, ecouncils.gsb.gov.zm). Councils are local authorities under the Local Government Act No. 2 of 2019 and Rating Act No. 21 of 2018, both under MLGRD. The ministry is not the issuing body itself."
+  },
+  "Department of Maritime and Inland Waterways": {
+   "ministry": "Ministry of Transport and Logistics",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.motl.gov.zm/?page_id=2802"
+   ],
+   "note": "MoTL departments page lists it; administers Inland Waters Shipping Act Cap. 466."
+  },
+  "Department of National Parks and Wildlife": {
+   "ministry": "Ministry of Tourism",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mot.gov.zm/"
+   ],
+   "note": "DNPW under MoT (Zambia Wildlife Act No. 14 of 2015). Confirmed."
+  },
+  "Department of National Registration, Passports, and Citizenship (Passport Office)": {
+   "ministry": "Ministry of Home Affairs and Internal Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mohais.gov.zm/"
+   ],
+   "note": "DNRPC under MoHAIS (Passport Act No. 28 of 2016, National Registration Cap. 126, Citizenship Act No. 33 of 2016). It is the same department as 'National Registration and Citizenship': both share eServices ShortName DNRPC and P.O. Box 50997. This entry covers the Passport Office services."
+  },
+  "Department of Preventive Maintenance and Services": {
+   "ministry": "Ministry of Infrastructure, Housing and Urban Development",
+   "confidence": "high",
+   "evidence": [
+    "https://www.mihud.gov.zm/?page_id=3305",
+    "https://eservices.gov.zm/#/service/538"
+   ],
+   "note": "MIHUD 'Preventive and Maintenance Services' directorate. eServices links its services to mihud.gsb.gov.zm, and it shares MIHUD's address (United Nations Ave) with Valuation & Property Management."
+  },
+  "Department of Public Health": {
+   "ministry": "Ministry of Health",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://eservices.gov.zm/#/service/501"
+   ],
+   "note": "eServices text: 'a Health Permit must be issued by the MoH through the Department of Public Health'. GN subject 'Public Health' and Public Health Act Cap. 295 are under MoH."
+  },
+  "Department of Registration and Regulation": {
+   "ministry": "Ministry of Small and Medium Enterprise Development",
+   "confidence": "high",
+   "evidence": [
+    "https://www.msme.gov.zm/",
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://eservices.gov.zm/#/service/270"
+   ],
+   "note": "MSMED department that registers co-operatives (Co-operative Societies Act No. 20 of 1998 is under MSMED in GN 1123). Listed on the MSME site; eServices ShortName DOC; address Block 28 Independence Ave, P.O. Box 50236 (MSMED HQ)."
+  },
+  "Department of Tourism": {
+   "ministry": "Ministry of Tourism",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mot.gov.zm/"
+   ],
+   "note": "MoT department (Tourism and Hospitality Act No. 13 of 2015; casinos, hotel managers). Confirmed."
+  },
+  "Department of Valuation & Property Management": {
+   "ministry": "Ministry of Infrastructure, Housing and Urban Development",
+   "confidence": "high",
+   "evidence": [
+    "https://www.mihud.gov.zm/?page_id=3305",
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://eservices.gov.zm/#/service/535"
+   ],
+   "note": "MIHUD Department of Valuation and Property Management (GN subject 'Valuation of Government Property'). eServices links its services to mihud.gsb.gov.zm."
+  },
+  "Department of Veterinary Services": {
+   "ministry": "Ministry of Fisheries and Livestock",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mfl.gov.zm/"
+   ],
+   "note": "MFL department (Animal Health Act No. 27 of 2010)."
+  },
+  "Energy Regulation Board": {
+   "ministry": "Ministry of Energy",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.erb.org.zm/about/"
+   ],
+   "note": "Statutory body under Energy Regulation Act No. 12 of 2019; listed under Ministry of Energy in GN 1123. Energy Regulation (Amendment) Act No. 45 of 2026 keeps the ERB."
+  },
+  "Forestry Department": {
+   "ministry": "Ministry of Green Economy and Environment",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mgee.gov.zm/"
+   ],
+   "note": "MGEE department (Forests Act No. 4 of 2015 under MGEE)."
+  },
+  "Labour Department": {
+   "ministry": "Ministry of Labour and Social Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlss.gov.zm/"
+   ],
+   "note": "MLSS Labour Department (Employment Code Act No. 3 of 2019; Industrial and Labour Relations Cap. 269)."
+  },
+  "Lands Department": {
+   "ministry": "Ministry of Lands and Natural Resources",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlnr.gov.zm/"
+   ],
+   "note": "MLNR Lands Department (Lands Act Cap. 184)."
+  },
+  "Lands and Deeds Department": {
+   "ministry": "Ministry of Lands and Natural Resources",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlnr.gov.zm/"
+   ],
+   "note": "MLNR Lands and Deeds Registry (Cap. 185)."
+  },
+  "Legal Metrology Directorate": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/",
+    "https://www.oiml.org/en/structure/rlmo-round-table/files/2025-round-table/zma-legal-metrology-presentation-to-oiml-rt_-10-october-2025-final.pdf"
+   ],
+   "note": "Directorate of the Zambia Metrology Agency (Metrology Act No. 6 of 2017). ZMA is an MCTI statutory body. eServices separately lists 'Zambia Metrology Agency' (ShortName ZMA)."
+  },
+  "Minerals Regulation Commission": {
+   "ministry": "Ministry of Mines and Minerals Development",
+   "confidence": "high",
+   "evidence": [
+    "https://zambialii.org/akn/zm/act/2024/14",
+    "https://bowmanslaw.com/insights/zambia-mining-sector-undergoes-significant-overhaul-with-implementation-of-new-laws/",
+    "https://www.mmmd.gov.zm/"
+   ],
+   "note": "Set up by the Minerals Regulation Commission Act No. 14 of 2024; MMMD minister signed the commencement orders 3 Jun 2025. The listed services (explosives, machinery, winding plants) are Mines Safety Department work (minessafety.gsb.gov.zm; 'MSD Officer'). The Explosives Act Cap. 115 is under MMMD in GN 1123."
+  },
+  "Ministry of Mines and Minerals Development": {
+   "ministry": "Ministry of Mines and Minerals Development",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mmmd.gov.zm/"
+   ],
+   "note": "Maps to itself (event registration: ZAMII 2025)."
+  },
+  "Muchinga Province Administration": {
+   "ministry": "Office of the President",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf"
+   ],
+   "note": "Provincial administrations are not under any line ministry. GN 1123/2021 allocates 'Provincial and District Administration' to the Office of the President (Cabinet Office is part of OP). The province has its own Provincial Minister and Permanent Secretary (Third Schedule)."
+  },
+  "National Productivity Development Department": {
+   "ministry": "Ministry of Labour and Social Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlss.gov.zm/"
+   ],
+   "note": "MLSS department ('National Productivity Development' on site). GN subjects 'Productivity Management' and 'Educational and Occupational Assessment Services' (psychometric testing)."
+  },
+  "National Registration and Citizenship": {
+   "ministry": "Ministry of Home Affairs and Internal Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mohais.gov.zm/"
+   ],
+   "note": "Same department as 'Department of National Registration, Passports, and Citizenship (Passport Office)' (DNRPC: same ShortName and P.O. Box 50997). This entry covers NRC cards and birth/marriage registration. The Marriage Act Cap. 50 is gazetted to MLGRD, but the department is MoHAIS."
+  },
+  "Occupational Safety and Health Services Department": {
+   "ministry": "Ministry of Labour and Social Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlss.gov.zm/"
+   ],
+   "note": "MLSS department (Occupational Health and Safety Act No. 36 of 2010; Factories Cap. 441)."
+  },
+  "Patents and Companies Registration Agency": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/"
+   ],
+   "note": "PACRA Act No. 4 of 2020 under MCTI; listed on MCTI site."
+  },
+  "Plant Quarantine and Phytosanitary Service": {
+   "ministry": "Ministry of Agriculture",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.agriculture.gov.zm/"
+   ],
+   "note": "MoA unit (based at ZARI Mount Makulu); GN subject and Plants, Pests and Diseases Cap. 233 under MoA."
+  },
+  "Registrar of Societies": {
+   "ministry": "Ministry of Home Affairs and Internal Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mohais.gov.zm/"
+   ],
+   "note": "Societies Act Cap. 119 under MoHAIS; listed on MoHAIS site."
+  },
+  "Road Transport and Safety Agency": {
+   "ministry": "Ministry of Transport and Logistics",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf"
+   ],
+   "note": "RTSA statutory body under Road Traffic Act No. 11 of 2002; listed under MoTL in GN 1123."
+  },
+  "Seed Control and Certification Institute": {
+   "ministry": "Ministry of Agriculture",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.agriculture.gov.zm/"
+   ],
+   "note": "MoA statutory body (Plant Variety and Seeds Cap. 236; Plant Breeder's Rights Act)."
+  },
+  "Social Security Department": {
+   "ministry": "Ministry of Labour and Social Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlss.gov.zm/"
+   ],
+   "note": "MLSS department ('Social Security' on site)."
+  },
+  "Southern Province Administration": {
+   "ministry": "Office of the President",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf"
+   ],
+   "note": "Same basis as Muchinga: 'Provincial and District Administration' sits under the Office of the President (GN 1123/2021). Not part of MLGRD, which supervises councils, not provincial administrations."
+  },
+  "Survey Department": {
+   "ministry": "Ministry of Lands and Natural Resources",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mlnr.gov.zm/"
+   ],
+   "note": "MLNR Survey Department (Land Survey Cap. 188)."
+  },
+  "Tax Department": {
+   "ministry": "Ministry of Finance and National Planning",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.zra.org.zm/about-us/"
+   ],
+   "note": "ZRA domestic taxes (tax clearance certificate). ZRA falls under MoFNP (ZRA Act Cap. 321; Income Tax Cap. 323)."
+  },
+  "Water Resources Management Authority": {
+   "ministry": "Ministry of Water Development and Sanitation",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mwds.gov.zm/"
+   ],
+   "note": "WARMA under Water Resources Management Act No. 21 of 2011; MWDS site calls it one of its two regulators."
+  },
+  "Zambia Bureau of Standards": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/"
+   ],
+   "note": "Standards Act No. 4 of 2017; MCTI statutory body."
+  },
+  "Zambia Compulsory Standards Agency": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/"
+   ],
+   "note": "Compulsory Standards Act No. 3 of 2017; MCTI statutory body."
+  },
+  "Zambia Development Agency": {
+   "ministry": "Ministry of Commerce, Trade and Industry",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mcti.gov.zm/"
+   ],
+   "note": "ZDA Act under MCTI; listed on MCTI site."
+  },
+  "Zambia Environmental Management Agency": {
+   "ministry": "Ministry of Green Economy and Environment",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.zambiamonitor.com/small-scale-miners-want-zema-fees-reviewed/"
+   ],
+   "note": "Environmental Management Act No. 12 of 2011 under MGEE. The MGEE minister (Siame) dissolved the ZEMA Board on 2 Oct 2026."
+  },
+  "Zambia Police Service": {
+   "ministry": "Ministry of Home Affairs and Internal Security",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mohais.gov.zm/"
+   ],
+   "note": "Zambia Police Act Cap. 107 and Firearms Cap. 110 under MoHAIS."
+  },
+  "Zambia Tourism Agency": {
+   "ministry": "Ministry of Tourism",
+   "confidence": "high",
+   "evidence": [
+    "https://media.zambialii.org/files/government_gazette/files/zm-government-gazette-dated-2021-09-24-no-7039.pdf",
+    "https://www.mot.gov.zm/"
+   ],
+   "note": "MoT statutory body (Tourism and Hospitality Act No. 13 of 2015). Confirmed."
+  }
+ }
+}

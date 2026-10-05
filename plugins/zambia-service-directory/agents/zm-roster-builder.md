@@ -40,6 +40,9 @@ Shell setup (project root): `PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$
    `reassigned_services: [{eservices_id, from_provider, reason}]`, with evidence that the receiving body issues it
    (its Act or its website). List the eServices IDs with `"$PY" -B "$S/eservices.py" agency --authority-id <ID> --ministry X --agency X | grep -E '"eservices_id"|"service_name"'`.
    Record former names and names used in the previous workbook in `aliases`.
+   DotGov built services for some agencies. `"$PY" -B "$S/dotgov_registry.py" show --ministry "<ministry>"` lists the DotGov agencies under this
+   ministry with their service names: make sure each one is a candidate agency. DotGov's name can differ from the official name (e.g. `Department of Tourism`).
+   Add a differing DotGov name to `aliases` so web-found DotGov services are matched to this agency.
 5. **Unmatched providers.** Record every eServices provider that looks like this ministry's but was not matched to any agency in
    `unmatched_eservices_authorities`, with a reason. Every such provider must appear in the output.
 6. Give each agency a `slug`: lower-case, hyphenated, ≤ 40 characters (e.g. `department-of-tourism`).

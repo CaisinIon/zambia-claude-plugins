@@ -9,10 +9,10 @@ Every ministry workbook comes out in the same fixed format.
 ```
 /zm-ministry-directory "<Ministry>"
   │
-  ├─ run_state.py init ─────────► output/<Ministry>/runs/<ts>/run.json, progress.json   (+ eServices catalogue cache)
+  ├─ run_state.py init ─────────► output/<Ministry>/runs/<ts>/run.json, progress.json   (+ eServices catalogue cache, DotGov registry)
   ├─ agent zm-roster-builder ───► roster.json   (agencies, entity types, eServices provider IDs, reassigned services)
   ├─ per agency (≤4 in parallel)
-  │    agency_file.py init ─────► agencies/<slug>.json   (eServices drafts + previous rows)
+  │    agency_file.py init ─────► agencies/<slug>.json   (eServices drafts, DotGov placeholders, previous rows)
   │    agent zm-agency-researcher► same file, completed; evidence/<slug>/ ; logs/<slug>.md
   │    agency_file.py check ────► rule check (validate_passports.py)
   │    agent zm-passport-verifier► verify/<slug>.json   (fresh context, re-reads evidence + live sources)
@@ -32,6 +32,7 @@ Every ministry workbook comes out in the same fixed format.
 | Data contracts | `references/schemas/{roster,agency,passport,ministries}.schema.json`, `scripts/zmcontract.py` |
 | Format | `templates/reference_workbook.xlsx` → `templates/workbook_spec.json` |
 | Ministry numbers | `input/ministries.json` |
+| DotGov services | `input/dotgov_services.json` / `templates/dotgov_services.json`, `templates/dotgov_ministries.json`, `scripts/dotgov_registry.py`, `scripts/dotgov_fill.py` |
 
 ## Data sources
 
@@ -41,6 +42,25 @@ Every ministry workbook comes out in the same fixed format.
 3. **Leads** (tier 5): LinkedIn, news and Wikipedia. These are only used to find official pages. They never back a value on their own.
 
 Every cited page is saved by `fetch_source.py`: raw file, text and sha256. The verifier re-reads the exact copy.
+
+## DotGov services (skipped, filled later)
+
+DotGov built the services on Zambia eServices and already holds their data. The harness does not research or verify them.
+
+| Step | What happens |
+|---|---|
+| Source | The DotGov service list (ZIGS query `ZIGS_Services … WHERE IsPublished = 1`; columns `ServiceID, name, Description, Department/Agency`). **ServiceID = eServices ID.** On 2026-10-01 all 423 IDs matched the eServices catalogue. |
+| Registry | `dotgov_registry.py extract "<xlsx>"` writes `input/dotgov_services.json` (visible, next to `ministries.json`) and `templates/dotgov_services.json` (bundled, used by plugin installs): file sha256, query, 47 agencies, 423 services, each with its **ministry**, sorted ministry → agency → service name. Ministries come from `templates/dotgov_ministries.json` (agency → ministry, with evidence; basis: Gazette Notice No. 1123 of 2021 and each ministry's site, checked 2026-10-05; re-check when a new portfolio notice is issued). `dotgov_registry.py show [--ministry NAME]` lists them by name. |
+| Run init | `run_state.py init` records the registry path, sha256 and size in `run.json`. `--no-dotgov` switches the feature off for that run. On resume, a changed registry gives a WARN. |
+| Agency init | eServices IDs in the registry become placeholder passports (`verification: "DotGov placeholder"`). No detail fetch, no evidence. They still count in `service_ids` / `service_count`, so R-COUNT, live count and drift are unchanged. |
+| Research | Before adding a web-found service the researcher runs `dotgov_registry.py match`. Score = mean of rapidfuzz token-set and token-sort ratios on normalised names, within the agency's candidates (its eServices IDs plus DotGov agencies whose name matches ≥ 90). `≥ 90` match → skipped; `80–89` possible → researcher decides and logs; else none. |
+| Verify / audit | `plan-verify` leaves placeholders out (`dotgov_skipped`). `apply-verdict` never changes them. The live check only confirms they are still in the catalogue. The audit never samples them. |
+| Rules | R-DOTGOV (placeholder well-formed; no token in a normal passport), R-DOTGOV-DUP (web or imported service that is a DotGov service; warn for `possible` or with `dotgov_distinct_reason`), W-DOTGOV (malformed token in the workbook). |
+| Workbook | Name and description come from the DotGov list. The 6 other fields hold `FROM DOTGOV [<DotGov agency> - <service>] {{DOTGOV:<id>:<field>}}`. Notes get `; N from DotGov (data to be filled)`. `report.md` lists the IDs per agency. |
+| Fill | `dotgov_fill.py fill <workbook> --data <export.csv|json>` replaces each token cell with the export value for (ServiceID, field). It writes `<name>_filled.xlsx` and re-validates. |
+
+A new run always rebuilds placeholders, replacing any values already filled. The DotGov database stays the source:
+re-run the fill after each run.
 
 ## Terminology and counting
 
@@ -122,4 +142,5 @@ Findings that changed the harness: partial repeals need a savings-clause check (
 - **Broken TLS.** Many `.gov.zm` sites have broken TLS chains. `fetch_source.py` retries unverified and records `tls_verified: false`.
 - **JavaScript pages.** These need Chrome DevTools MCP (`.mcp.json`). Without it they are recorded as a source limitation.
 - **Carried-over rows.** Rows from an older workbook that a run neither confirms nor removes are kept unchanged and reported as carried over. They may still fail workbook validation (e.g. `Not specified`) until a later run re-checks them.
+- **DotGov matching is fuzzy.** A web service whose name scores below 80 against the DotGov list is still researched; the verifier's V-DUP check is the safety net. The registry is a snapshot: new DotGov services need a new export and `extract`.
 - **Faithful copies.** Reference-workbook quirks that are not rules, such as the Carlito default font of empty cells, are copied as they are.

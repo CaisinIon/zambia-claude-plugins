@@ -18,6 +18,8 @@ Rule ids:
   W-DUP       duplicate service rows (same agency+name, or same eServices link twice)
   W-FORMULA   formula error value (#REF!, #VALUE!, ...)
   W-CONSIST   ministry / agency names disagree between sheets
+  W-DOTGOV    malformed DotGov placeholder, or token ID differs from the row's eServices link
+              (well-formed placeholders are counted in the summary: dotgov_rows, dotgov_tokens)
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ from pathlib import Path
 import openpyxl
 from openpyxl.utils import get_column_letter
 
+import dotgov_registry
 import zmcontract as c
 from zmlog import dump_json, get_logger, load_json, templates_dir
 from zmstyle import style_diff, style_of
@@ -44,6 +47,8 @@ STYLE_KEYS = ("font", "fill", "border", "alignment")
 class Report:
     def __init__(self):
         self.items: list[dict] = []
+        self.dotgov_rows: set[int] = set()
+        self.dotgov_tokens = 0
 
     def add(self, rule, severity, sheet, cell, message):
         self.items.append({"rule": rule, "severity": severity, "sheet": sheet, "cell": cell, "message": message})
@@ -132,6 +137,18 @@ def check_passport_sheet(rep: Report, ws, spec_sp: dict, data: dict) -> None:
             elif str(v).strip() in c.DEPRECATED_PLACEHOLDERS:
                 rep.add("W-TERM", "error", ws.title, f"{col}{p['row']}",
                         f"{header} uses {str(v).strip()!r}; use {c.DEPRECATED_PLACEHOLDERS[str(v).strip()]!r}")
+            elif dotgov_registry.ANY_TOKEN_RE.search(str(v)):
+                cell = dotgov_registry.parse_cell(v)
+                sid = eservices_id_from_link(p.get("source_link"))
+                if cell is None or cell["field"] not in c.DOTGOV_FIELDS:
+                    rep.add("W-DOTGOV", "error", ws.title, f"{col}{p['row']}", f"{header}: malformed DotGov placeholder {v!r}")
+                elif cell["service_id"] != sid or cell["field"] != f:
+                    rep.add("W-DOTGOV", "error", ws.title, f"{col}{p['row']}",
+                            f"{header}: token {cell['service_id']}:{cell['field']} does not fit this row "
+                            f"(eServices {sid}, column {f})")
+                else:
+                    rep.dotgov_rows.add(p["row"])
+                    rep.dotgov_tokens += 1
     keys = Counter((c.normalise_name(p.get("agency")), c.normalise_name(p.get("service_name"))) for p in data["passports"])
     for (agency, name), n in keys.items():
         if n > 1:
@@ -216,9 +233,11 @@ def validate_workbook(path: Path, spec: dict) -> dict:
     check_formulas(rep, wb)
     errors = sum(1 for x in rep.items if x["severity"] == "error")
     by_rule = Counter(x["rule"] for x in rep.items)
-    log.info("validated %s errors=%d warnings=%d", path, errors, len(rep.items) - errors)
+    log.info("validated %s errors=%d warnings=%d dotgov_rows=%d dotgov_tokens=%d", path, errors,
+             len(rep.items) - errors, len(rep.dotgov_rows), rep.dotgov_tokens)
     return {"ok": errors == 0, "workbook": str(path), "errors": errors, "warnings": len(rep.items) - errors,
-            "by_rule": dict(by_rule), "rows": len(data["passports"]), "findings": rep.items}
+            "by_rule": dict(by_rule), "rows": len(data["passports"]),
+            "dotgov_rows": len(rep.dotgov_rows), "dotgov_tokens": rep.dotgov_tokens, "findings": rep.items}
 
 
 def main() -> int:
