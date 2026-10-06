@@ -124,7 +124,7 @@ Profiles live in `input/settings.json`. Edit that file to change them for every 
 
 | Setting | Values | Meaning |
 |---|---|---|
-| `roster_model`, `researcher_model`, `verifier_model` | `claude-sonnet-5-5`, `claude-opus-5-5`, or `sonnet` / `opus` | Model for each role. The verifier has the most effect on cost and on catching errors. |
+| `roster_model`, `researcher_model`, `verifier_model` | `sonnet`, `opus`, `haiku`, `fable`, or a full id such as `claude-sonnet-5-5` | Model for each role. The verifier has the most effect on cost and on catching errors. A full id is converted to its short name (`settings.py` shows it as `agent_models`) because the Agent tool only accepts short names. |
 | `max_parallel` | 1 or more | How many agencies are researched at the same time. More is faster; the longest agency still sets the minimum clock time. |
 | `reverify_scope` | `pending` or `all` | After a repair, re-check only the changed passports, or all of them. |
 | `live_check` | `script` or `llm` | `script`: a program compares eServices values with the live API. `llm`: the reviewer does it by hand (slower, costs more). |

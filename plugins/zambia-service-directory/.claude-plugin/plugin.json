@@ -1,7 +1,7 @@
 {
   "name": "zambia-service-directory",
   "description": "Research one Zambian ministry's agencies and public services (eServices + official sources), verify every service passport, and write the ministry's National Service Directory Excel workbook.",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "author": {
     "name": "dotGov Solutions",
     "email": "ion.caisin@dotgovsolutions.net"

@@ -43,7 +43,7 @@ never sampled for re-verification, and only a malformed token (`W-DOTGOV`, `R-DO
    - It picks a random sample of `N` written rows to re-verify (with `--run`, rows changed by that run are not forced in, because the run's own verifier already checked them; use a large `--sample` for a full re-check).
    Output: `OUT/audit_prepare.json`, with `sample[]` grouped by slug and one file per slug under `OUT/audit/agencies/`.
 
-3. **Source re-check.** For each slug in `sample`, start the `zambia-service-directory:zm-passport-verifier` agent (`model` = `--verifier-model`) with
+3. **Source re-check.** For each slug in `sample`, start the `zambia-service-directory:zm-passport-verifier` agent (`model` = `"$PY" -B "$S/settings.py" alias <--verifier-model>`, i.e. `opus` or `sonnet`; never omit it, the agent file's own model would apply) with
    `RUN=OUT/audit` and `SLUG=<slug>`. Launch up to 4 at once.
    Rows that came from the sheet without saved evidence are checked live (WebFetch / `eservices.py service <ID>`).
 

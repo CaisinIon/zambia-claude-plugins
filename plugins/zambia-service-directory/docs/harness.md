@@ -72,13 +72,15 @@ See `references/TERMINOLOGY.md`. Key points:
 
 ## Models
 
-Pinned in the frontmatter (`model:`) of each file; change them there.
+Pinned in the frontmatter (`model:`) of each file; change them there. A profile overrides this on every Agent call.
+
+**How the profile model reaches an agent.** The Agent tool accepts only the short names `sonnet`, `opus`, `haiku`, `fable` and rejects full ids such as `claude-sonnet-5-5`. An agent started without `model` runs on the model in its own file. So `settings.py` also resolves `agent_models` (`roster`, `researcher`, `verifier`) as short names, the skills pass exactly those on every call, and `run.json` records them. Test (2026-10-06, verifier agent): no `model` -> Opus; `sonnet` -> Sonnet; `opus` -> Opus; `claude-sonnet-5-5` -> rejected. That is why the verifier file now defaults to Sonnet: a dropped override can no longer silently cost Opus tokens.
 
 | File | Model | Why |
 |---|---|---|
 | `zm-ministry-directory`, `zm-verify-ministry` (orchestrators) | `claude-sonnet-5-5` | script running and routing |
 | `zambia-service-directory:zm-roster-builder`, `zambia-service-directory:zm-agency-researcher` | `claude-sonnet-5-5` | bulk research; the verifier catches its mistakes |
-| `zambia-service-directory:zm-passport-verifier` (also used by the audit) | `claude-opus-5-5` | judgment work, about 63% of tokens; a different model from the researcher |
+| `zambia-service-directory:zm-passport-verifier` (also used by the audit) | `sonnet` (fallback only) | judgment work, about 63% of tokens. The profile sets the real model on each call: `opus` for `balanced` and `thorough`, `sonnet` for `fast` |
 
 Verification is the main cost. Before moving the verifier to Sonnet, compare its verdicts to Opus on one agency.
 

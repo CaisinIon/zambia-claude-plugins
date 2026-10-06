@@ -61,17 +61,18 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 1. **Init run**
    `"$PY" -B "$S/run_state.py" init --ministry "<name>" [--profile P] [--set k=v ...] [--import X] [--include-local] [--ministry-no N] [--no-dotgov]`
    Keep `run` (= RUN), `ministry`, `ministry_no`, `existing_agencies` and `settings` (= SET) from its JSON output.
-   Tell the user the profile and the models in one line. It also caches today's eServices catalogue and records the DotGov
+   Tell the user the profile and the models in one line (e.g. `fast: research sonnet, verify sonnet`). It also caches today's eServices catalogue and records the DotGov
    registry in `RUN/run.json` (`dotgov.services`; `enabled: false` with `--no-dotgov`).
-   Use `SET.<key>` below. Pass `model: SET.<role>_model` on every Agent call for that role.
+   Use `SET.<key>` below. Pass `model: SET.agent_models.<role>` (`roster`, `researcher`, `verifier`; the short names `sonnet` / `opus`) on **every** Agent call for that role.
+   The Agent tool rejects full ids such as `claude-sonnet-5-5`, and an agent started without `model` runs on the model in its own file, not on the profile's. Never drop `model`; fix the name instead.
    If it prints `ERROR [ministry-no]`, stop and show the error (the registry file needs fixing).
    If the JSON has `warnings` (e.g. a Windows path that is too long), show them to the user once, then continue.
 
-2. **Roster.** Start the `zambia-service-directory:zm-roster-builder` agent (`model: SET.roster_model`) with RUN, the ministry, MINISTRY_NO, and `existing_agencies`.
+2. **Roster.** Start the `zambia-service-directory:zm-roster-builder` agent (`model: SET.agent_models.roster`) with RUN, the ministry, MINISTRY_NO, and `existing_agencies`.
    Then for each agency: `"$PY" -B "$S/run_state.py" set RUN <slug> pending`, or `excluded` for Excluded ones.
 
 3. **Research.** For each pending Included slug:
-   `"$PY" -B "$S/agency_file.py" init RUN <slug>`, then start a `zambia-service-directory:zm-agency-researcher` agent (`model: SET.researcher_model`) with `RUN` and `SLUG`.
+   `"$PY" -B "$S/agency_file.py" init RUN <slug>`, then start a `zambia-service-directory:zm-agency-researcher` agent (`model: SET.agent_models.researcher`) with `RUN` and `SLUG`.
    `init` turns every DotGov service into a placeholder without fetching it; the researcher only looks for other services
    and skips web-found ones that `dotgov_registry.py match` reports as DotGov.
    Launch up to `SET.max_parallel` researchers in one message. Start the next agency as soon as one finishes.
@@ -86,7 +87,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
    2. `"$PY" -B "$S/agency_file.py" plan-verify RUN <slug> --scope <S> --chunk SET.verifier_chunk` with `<S>` = `all` for the first round and
       `SET.reverify_scope` for the round after a repair. It returns the passport indices per part. DotGov placeholders are never
       included (`dotgov_skipped`). If `to_verify` is 0, skip steps 3–5 for this agency (the live check already confirmed the count).
-   3. Start one `zambia-service-directory:zm-passport-verifier` (`model: SET.verifier_model`, fresh context, it must not see the researcher's log) per part, all in one message,
+   3. Start one `zambia-service-directory:zm-passport-verifier` (`model: SET.agent_models.verifier`, fresh context, it must not see the researcher's log) per part, all in one message,
       each with `RUN`, `SLUG`, `INDICES`, `PART` (and `LIVE`). With a single part, omit `PART` and `INDICES` when the scope is `all`.
    4. With several parts: `"$PY" -B "$S/agency_file.py" merge-verdicts RUN <slug>`.
    5. `"$PY" -B "$S/agency_file.py" apply-verdict RUN <slug>`.
@@ -105,7 +106,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
    It must be `ok: true` for the rows this run wrote. Rows carried over from an older workbook may still fail
    (e.g. `Not specified`). They are listed in the report as not re-checked.
 
-8. **Audit.** Run `/zambia-service-directory:zm-verify-ministry <workbook> --run RUN --sample SET.audit_sample --focus SET.audit_focus --verifier-model SET.verifier_model`.
+8. **Audit.** Run `/zambia-service-directory:zm-verify-ministry <workbook> --run RUN --sample SET.audit_sample --focus SET.audit_focus --verifier-model SET.agent_models.verifier`.
    It writes `RUN/audit.json` and `RUN/audit.md`.
 
 9. **Report.** `"$PY" -B "$S/report.py" RUN` → `RUN/report.md`. Then set all ledger entries to `done`.

@@ -2,7 +2,7 @@
 name: zm-passport-verifier
 description: Independently verify one agency's service passports against their cited evidence and live official sources; writes verify/<slug>.json with PASS / PASS_WITH_LIMITS / FAIL per passport. Use from /zambia-service-directory:zm-ministry-directory and /zambia-service-directory:zm-verify-ministry after research.
 tools: Read, Grep, Glob, Write, Bash, WebFetch, WebSearch
-model: claude-opus-5-5
+model: sonnet
 maxTurns: 50
 ---
 

@@ -4,9 +4,14 @@
 Usage:
   settings.py show [--profile fast|balanced|thorough] [--set key=value ...]
   settings.py list
+  settings.py alias <model>      # claude-opus-5-5 -> opus (the name the Agent tool accepts)
 
 Reads <project>/input/settings.json (falls back to templates/settings.default.json).
 Prints the resolved settings as JSON. Exit 2 on an unknown profile, key or bad value.
+
+The Agent tool only accepts the short names sonnet / opus / haiku / fable for its `model` argument, and an agent
+started without one falls back to the model in its own file. `agent_models` in the resolved settings holds the short
+name for each role: pass exactly that as `model` on every Agent call.
 """
 from __future__ import annotations
 
@@ -27,11 +32,25 @@ SCHEMA = {
     "live_check": ("script", "llm"),
     "audit_focus": ("researcher_written", "all"),
 }
-MODEL_RE = re.compile(r"^(claude-[a-z0-9.-]+|sonnet|opus|haiku|inherit)$")
+MODEL_RE = re.compile(r"^(claude-[a-z0-9.-]+|sonnet|opus|haiku|fable)$")
+AGENT_ALIASES = ("sonnet", "opus", "haiku", "fable")
+FAMILY_RE = re.compile(r"^claude-(sonnet|opus|haiku|fable)(?:-|$)")
+AGENT_ROLES = ("roster", "researcher", "verifier")
 
 
 class SettingsError(Exception):
     pass
+
+
+def agent_alias(model: str) -> str:
+    """The short model name the Agent tool accepts: 'claude-opus-5-5' -> 'opus'."""
+    name = str(model).strip()
+    if name in AGENT_ALIASES:
+        return name
+    hit = FAMILY_RE.match(name)
+    if hit:
+        return hit.group(1)
+    raise SettingsError(f"{model!r}: cannot map to an agent model name; use one of {list(AGENT_ALIASES)}")
 
 
 def settings_path() -> Path:
@@ -66,6 +85,7 @@ def _cast(key: str, raw):
         return value
     if not MODEL_RE.match(str(raw)):
         raise SettingsError(f"{key}={raw!r}: not a model id or alias (e.g. claude-sonnet-5-5, sonnet, opus)")
+    agent_alias(raw)
     return str(raw)
 
 
@@ -80,6 +100,7 @@ def resolve(profile: str | None = None, overrides: dict | None = None, path: Pat
         if key not in merged:
             raise SettingsError(f"profile {name!r} is missing {key!r}")
         resolved[key] = _cast(key, merged[key])
+    resolved["agent_models"] = {role: agent_alias(resolved[f"{role}_model"]) for role in AGENT_ROLES}
     resolved["description"] = data["profiles"][name].get("description", "")
     resolved["overrides"] = {k: _cast(k, v) for k, v in (overrides or {}).items()}
     log.debug("resolved profile=%s overrides=%s", name, resolved["overrides"])
@@ -103,8 +124,13 @@ def main() -> int:
     sp.add_argument("--profile")
     sp.add_argument("--set", dest="sets", action="append", default=[])
     sub.add_parser("list")
+    ap_alias = sub.add_parser("alias")
+    ap_alias.add_argument("model")
     args = ap.parse_args()
     try:
+        if args.cmd == "alias":
+            print(agent_alias(args.model))
+            return 0
         if args.cmd == "list":
             data = load_settings()
             for name, p in data["profiles"].items():
