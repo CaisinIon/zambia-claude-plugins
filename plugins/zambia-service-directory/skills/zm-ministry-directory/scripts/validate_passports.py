@@ -46,7 +46,7 @@ from zmschema import schema_errors
 log = get_logger("validate_passports")
 
 VAGUE = re.compile(r"^(unknown|tbc|tba|to be confirmed|not available|none|nil|-+|\?)$", re.I)
-OUT_OF_SCOPE = re.compile(r"\b(vacanc|recruit|tender|procure|internship|job|staff|employee welfare|bid)\w*", re.I)
+OUT_OF_SCOPE = re.compile(r"\b(vacanc|recruit|tender|procure|internship(?!\s+site)|job|staff|employee welfare|bid)\w*", re.I)
 MAX_ELIGIBILITY = 600
 
 

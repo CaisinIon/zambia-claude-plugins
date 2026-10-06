@@ -164,7 +164,8 @@ def main() -> int:
                                   args.profile, cfg.parse_overrides(args.sets), dotgov=not args.no_dotgov),
                              ensure_ascii=False, indent=2))
         elif args.cmd == "set":
-            print(json.dumps(set_state(args.run, args.slug, args.state, args.note), ensure_ascii=False))
+            entry = set_state(args.run, args.slug, args.state, args.note)
+            print(json.dumps({"slug": args.slug, "state": entry["state"]}, ensure_ascii=False))
         elif args.cmd == "show":
             print(json.dumps(load_json(args.run / "progress.json"), ensure_ascii=False, indent=2))
         elif args.cmd == "settings":

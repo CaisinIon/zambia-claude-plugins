@@ -181,6 +181,7 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
     agency = load_json(path)
     verdict = load_json(run / "verify" / f"{slug}.json")
     results = {"Verified": 0, "Verified with limitations": 0, "repair": 0, "Unresolved": 0}
+    repairs = []
     for v in verdict.get("passports", []):
         i = v["index"]
         if i >= len(agency["passports"]):
@@ -210,12 +211,13 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
         else:
             p.update(verification="Pending", verification_notes=f"REPAIR: {notes}")
             results["repair"] += 1
+            repairs.append({"index": i, "service_name": p["service_name"], "repair": notes})
     if verdict.get("missing_services"):
         agency.setdefault("source_limitations", []).extend(
             f"verifier: possible missing service {m}" for m in verdict["missing_services"])
     dump_json(agency, path)
     log.info("verdict applied %s final=%s %s", slug, final, results)
-    return {"slug": slug, "final": final, **results, "agency_verdict": verdict.get("verdict")}
+    return {"slug": slug, "final": final, **results, "agency_verdict": verdict.get("verdict"), "repairs": repairs}
 
 
 _NORM_RE = re.compile(r"[^a-z0-9]+")

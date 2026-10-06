@@ -2,15 +2,18 @@
 """Audit helper for /zm-verify-ministry.
 
 Usage:
-  audit.py prepare <workbook.xlsx> --out OUT [--run RUN] [--sample N] [--seed S] [--focus researcher_written|all]
+  audit.py prepare <workbook.xlsx> --out OUT [--run RUN] [--sample N] [--seed S] [--focus researcher_written|all] [--chunk N]
   audit.py finish --out OUT
 
 prepare: rebuilds agency data (from RUN/agencies when given, else from the sheet),
 runs the passport rules, checks eServices drift against today's catalogue, and
 writes the re-verification sample to OUT/audit/agencies/<slug>.json (verifier input)
-plus OUT/audit_prepare.json.
+plus OUT/audit_prepare.json. With --run the slugs are the run's own (the file names in RUN/agencies).
+An agency with more sampled rows than --chunk (default 6, 0 = never split) is listed under `parts` as
+{part, indices}: start one verifier per part (PART, INDICES); finish merges the part files.
 finish: combines OUT/workbook_audit.json, OUT/audit_prepare.json and
-OUT/audit/verify/*.json into OUT/audit.json and OUT/audit.md (PASS/FAIL).
+OUT/audit/verify/*.json into OUT/audit.json and OUT/audit.md (PASS/FAIL). A verdict that covers fewer
+rows than were sampled (e.g. a verifier that hit its turn limit) counts as a missing verdict.
 """
 from __future__ import annotations
 
@@ -34,10 +37,26 @@ log = get_logger("audit")
 # Without saved evidence these rules can't be judged from the sheet alone; the verifier checks sources live.
 SHEET_ONLY_SKIP = {"R-SOURCE", "R-PENDING", "R-DRAFT", "R-COUNT", "R-REASSIGN", "R-SCHEMA"}
 PROVIDER_MATCH = 85
+AUDIT_CHUNK = 6
+PART_FILE = re.compile(r"\.part\d+\.json$")
 
 
 def slugify(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40]
+    return re.sub(r"[^a-z0-9]+", "-", name.lower())[:40].strip("-")
+
+
+def split_parts(count: int, chunk: int) -> list[dict]:
+    """Even parts of at most `chunk` passports as {part, indices} (indices like '0-4'); [] when no split is needed."""
+    if chunk <= 0 or count <= chunk:
+        return []
+    k = -(-count // chunk)
+    size = -(-count // k)
+    parts = []
+    for n in range(k):
+        lo, hi = n * size, min(count, (n + 1) * size) - 1
+        if lo <= hi:
+            parts.append({"part": n + 1, "indices": f"{lo}-{hi}" if hi > lo else str(lo)})
+    return parts
 
 
 def agencies_from_sheet(data: dict) -> list[dict]:
@@ -111,11 +130,15 @@ def pick_sample(candidates: list[tuple[dict, dict]], n: int, focus: str, rng: ra
 
 
 def prepare(workbook: Path, out: Path, run: Path | None, sample_n: int, seed: int | None,
-            focus: str = "researcher_written") -> dict:
+            focus: str = "researcher_written", chunk: int = AUDIT_CHUNK) -> dict:
     data = read_workbook(workbook)
     catalogue = load_catalogue()
+    slug_of: dict[int, str] = {}
     if run:
-        agencies = [load_json(p) for p in sorted((run / "agencies").glob("*.json"))]
+        agencies = []
+        for path in sorted((run / "agencies").glob("*.json")):
+            agencies.append(load_json(path))
+            slug_of[id(agencies[-1])] = path.stem  # the run's own slug, so verifiers and evidence use one name
         build = load_json(run / "build.json") if (run / "build.json").exists() else {"changes": []}
         changed = set()  # rows changed by this run were just verified by the run itself; the audit samples independently
     else:
@@ -144,35 +167,55 @@ def prepare(workbook: Path, out: Path, run: Path | None, sample_n: int, seed: in
     (audit_run / "agencies").mkdir(parents=True)
     (audit_run / "verify").mkdir()
     sample: dict[str, list[str]] = {}
+    parts: dict[str, list[dict]] = {}
     for a in agencies:
         chosen = [p for (aa, p) in picked if aa is a]
         if not chosen:
             continue
-        slug = slugify(a["official_name"])
+        slug = slug_of.get(id(a)) or slugify(a["official_name"])
         dump_json({**a, "passports": chosen}, audit_run / "agencies" / f"{slug}.json")
         if run and (run / "evidence" / slug).exists():
             shutil.copytree(run / "evidence" / slug, audit_run / "evidence" / slug, dirs_exist_ok=True)
         sample[slug] = [p["service_name"] for p in chosen]
+        if split_parts(len(chosen), chunk):
+            parts[slug] = split_parts(len(chosen), chunk)
     result = {"workbook": str(workbook), "ministry": data.get("ministry"), "from_run": str(run) if run else None,
               "prepared_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "passport_errors": len(errors), "passport_warnings": len(findings) - len(errors),
               "findings": findings, "drift": drift(agencies, catalogue, bool(run)),
-              "sample": sample, "sample_size": len(picked), "dotgov_placeholders": n_dotgov}
+              "sample": sample, "parts": parts, "sample_size": len(picked), "dotgov_placeholders": n_dotgov}
     dump_json(result, out / "audit_prepare.json")
     log.info("prepared audit: errors=%d drift=%d sample=%d agencies=%d dotgov_placeholders=%d", len(errors),
              len(result["drift"]), len(picked), len(sample), n_dotgov)
     return result
 
 
+def merge_parts(out: Path, parts: dict[str, list[dict]]) -> None:
+    """Merge RUN/verify/<slug>.part<N>.json into <slug>.json once every expected part exists. An incomplete set
+    is left alone, so the agency shows up as a missing verdict."""
+    from agency_file import merge_verdicts
+
+    audit_run = out / "audit"
+    for slug, expected in parts.items():
+        found = list((audit_run / "verify").glob(f"{slug}.part*.json"))
+        if len(found) >= len(expected):
+            merge_verdicts(audit_run, slug)
+        else:
+            log.warning("audit %s: %d of %d part verdicts present; not merged", slug, len(found), len(expected))
+
+
 def finish(out: Path) -> dict:
     prep = load_json(out / "audit_prepare.json")
     wb = load_json(out / "workbook_audit.json") if (out / "workbook_audit.json").exists() else None
+    merge_parts(out, prep.get("parts") or {})
     verdicts = {p.stem: load_json(p) for p in sorted((out / "audit" / "verify").glob("*.json"))
-                if not p.name.endswith(".eservices.json")}
+                if not p.name.endswith(".eservices.json") and not PART_FILE.search(p.name)}
     failed = [{"agency": v.get("agency"), **x} for v in verdicts.values() for x in v.get("passports", []) if x.get("verdict") == "FAIL"]
     limited = [{"agency": v.get("agency"), **x} for v in verdicts.values() for x in v.get("passports", [])
                if x.get("verdict") == "PASS_WITH_LIMITS"]
-    missing_verdicts = sorted(set(prep["sample"]) - set(verdicts))
+    missing_verdicts = sorted(set(prep["sample"]) - set(verdicts)
+                              | {slug for slug, v in verdicts.items() if slug in prep["sample"]
+                                 and len(v.get("passports", [])) < len(prep["sample"][slug])})
     wb_errors = wb["errors"] if wb else None
     ok = (wb_errors == 0 and prep["passport_errors"] == 0 and not failed and not prep["drift"] and not missing_verdicts)
     result = {"verdict": "PASS" if ok else "FAIL", "workbook": prep["workbook"], "workbook_errors": wb_errors,
@@ -228,11 +271,12 @@ def main() -> int:
     pp.add_argument("--sample", type=int, default=10)
     pp.add_argument("--seed", type=int)
     pp.add_argument("--focus", choices=("researcher_written", "all"), default="researcher_written")
+    pp.add_argument("--chunk", type=int, default=AUDIT_CHUNK, help="max sampled rows per verifier; 0 = never split")
     fp = sub.add_parser("finish")
     fp.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     if args.cmd == "prepare":
-        r = prepare(args.workbook, args.out, args.run, args.sample, args.seed, args.focus)
+        r = prepare(args.workbook, args.out, args.run, args.sample, args.seed, args.focus, args.chunk)
         print(json.dumps({k: v for k, v in r.items() if k != "findings"}, ensure_ascii=False, indent=2))
         return 0
     r = finish(args.out)

@@ -58,7 +58,7 @@ The tool runs the same on Windows and macOS. On Windows, check these once:
 | Use a short folder, outside OneDrive | Windows refuses file paths longer than 260 characters, and OneDrive locks files while it syncs | For example `C:\zm\zambia-service-directory`. The run warns at the start if the folder path is too long. |
 | Or: turn on long paths (needs an administrator) | Removes the 260-character limit | PowerShell as administrator: `New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force`, then restart |
 | Close the workbook in Excel before a run | Windows locks a workbook that is open in Excel, so it cannot be updated | Close it; then run the last step again |
-| Optional Chrome tool: Node.js and Chrome installed | Needed only for websites that show content only with JavaScript | If its tools do not appear, add it again with the `cmd /c` wrapper: `claude mcp add chromeDevtools -- cmd /c npx -y chrome-devtools-mcp@latest --no-usage-statistics` |
+| Optional Chrome tool: Node.js and Chrome installed | Needed only for websites that show content only with JavaScript | The tool starts through `node` (the `chrome-mcp.js` launcher), because Claude Code cannot start `npx` directly on Windows. If its tools still do not appear, run `node <scripts folder>/chrome-mcp.js --help` in Git Bash and send the error text. The run works without it: pages that need JavaScript are then reported as not checked. |
 
 ## 3. Run a ministry
 
@@ -250,6 +250,7 @@ Run the same command again. The tool uses the ministry's current workbook as the
 | `cannot write … Close the workbook in Excel` | The workbook is open in Excel (Windows locks it). Close it and run the build step again. |
 | Warning at the start: path is long (Windows) | Move the folder to a short path such as `C:\zm\`, or turn on long paths (section 2c). |
 | `no Python 3.10+ found` | Install uv (section 1) or Python 3.12, then run the command again. |
+| Windows: `uv run failed` / `Missing expected target directory for Python minor version link` | A known uv problem in Git Bash. The setup now falls back to the Python that uv installed, or to another Python on the computer, by itself. If it still stops, install Python 3.12 from python.org and run the command again. |
 | Something looks wrong in the workbook | Do not edit it by hand. Report it; the fix belongs in the tool's rules so every ministry benefits. |
 
 Verbose logging: set `LOG_LEVEL=DEBUG`. Add `ZM_RUN_DIR=<run folder>` to also save the log as `run.log`.

@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "chromeDevtools": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "chrome-devtools-mcp@latest",
-        "--no-usage-statistics"
+        "${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/chrome-mcp.js"
       ]
     }
   }

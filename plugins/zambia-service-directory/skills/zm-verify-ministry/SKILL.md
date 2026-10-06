@@ -37,18 +37,21 @@ never sampled for re-verification, and only a malformed token (`W-DOTGOV`, `R-DO
 1. **Format and totals.** `"$PY" -B "$S/validate_workbook.py" <workbook> --out OUT/workbook_audit.json --summary`
    This checks sheet order, headers, section layout, merges, styles, totals vs rows, placeholders, duplicates and formula errors.
 
-2. **Passport rules.** `"$PY" -B "$S/audit.py" prepare <workbook> --out OUT [--run RUN] [--sample N] [--focus F]`
+2. **Passport rules.** `"$PY" -B "$S/audit.py" prepare <workbook> --out OUT [--run RUN] [--sample N] [--focus F] [--chunk N]`
    - It rebuilds per-agency files from the sheet rows (or uses `RUN/agencies`).
    - It runs `validate_passports.py` and re-counts eServices services against a fresh catalogue (drift).
    - It picks a random sample of `N` written rows to re-verify (with `--run`, rows changed by that run are not forced in, because the run's own verifier already checked them; use a large `--sample` for a full re-check).
-   Output: `OUT/audit_prepare.json`, with `sample[]` grouped by slug and one file per slug under `OUT/audit/agencies/`.
+   - With `--run` the slugs are the run's own. A slug with more sampled rows than `--chunk` (default 6) is split: it appears in `parts[slug]` as `{part, indices}`.
+   Output: `OUT/audit_prepare.json`, with `sample[]` grouped by slug, `parts` for split slugs, and one file per slug under `OUT/audit/agencies/`.
 
 3. **Source re-check.** For each slug in `sample`, start the `zambia-service-directory:zm-passport-verifier` agent (`model` = `"$PY" -B "$S/settings.py" alias <--verifier-model>`, i.e. `opus` or `sonnet`; never omit it, the agent file's own model would apply) with
    `RUN=OUT/audit` and `SLUG=<slug>`. Launch up to 4 at once.
+   For a slug listed in `parts`, start **one verifier per part**, each with `PART` and `INDICES` from that entry (a verifier that gets
+   too many rows runs out of turns before it writes its verdict). `audit.py finish` merges the part files; a missing part counts as a missing verdict.
    Rows that came from the sheet without saved evidence are checked live (WebFetch / `eservices.py service <ID>`).
 
 4. **Verdict.** `"$PY" -B "$S/audit.py" finish --out OUT` → writes `OUT/audit.json` and `OUT/audit.md`:
-   - **PASS**: no workbook errors, no passport-rule errors, no FAIL in the sample, and no eServices drift.
+   - **PASS**: no workbook errors, no passport-rule errors, no FAIL in the sample, no eServices drift, and a complete verdict for every sampled row.
    - **FAIL**: otherwise. The report has a table of failing rows (sheet!cell, rule, message, fix) and the drift list
      (services added or removed on eServices since the workbook was built).
 

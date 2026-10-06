@@ -93,7 +93,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
    4. With several parts: `"$PY" -B "$S/agency_file.py" merge-verdicts RUN <slug>`.
    5. `"$PY" -B "$S/agency_file.py" apply-verdict RUN <slug>`.
    If `repair > 0`: set the ledger to `repair`, move the round-1 verdict aside (`verify/<slug>.round1.json`), start a researcher with
-   `REPAIR` = the `verification_notes` starting with `REPAIR:`, run one more verification round (scope `SET.reverify_scope`), then
+   `REPAIR` = the `repairs` list that `apply-verdict` printed (index, service, repair note; the same text is in each passport's `verification_notes`), run one more verification round (scope `SET.reverify_scope`), then
    `apply-verdict RUN <slug> --final`. At most one repair round. Then set the ledger to `verified`, or `unresolved` if every passport failed.
 
 5. **Ministry-wide check.** `"$PY" -B "$S/validate_passports.py" RUN/agencies/*.json --out RUN/validation.json`.

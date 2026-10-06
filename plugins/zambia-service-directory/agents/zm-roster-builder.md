@@ -32,6 +32,8 @@ Shell setup (project root): `PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$
    `$R/TERMINOLOGY.md` → Inclusion). Otherwise it is `Excluded` with a reason
    (internal unit, e.g. HR, planning, procurement; policy-only directorate; educational institution).
    Do not exclude a body just because eServices doesn't list it.
+   A body whose public services you cannot confirm yet stays `Included`: the researcher looks, and the build step
+   excludes it with the reason "no public-facing service confirmed in official sources" if nothing is found.
 4. **Map to eServices.** For each agency, record `eservices_authority_ids` (all matching provider IDs; score ≥ 85 or clearly the same body)
    and `eservices_name` (exact provider title), or `[]` / `null`.
    Service titles can show that one provider's services belong to another agency. Example: hotel-manager services are listed under
