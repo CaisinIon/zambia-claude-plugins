@@ -115,6 +115,22 @@ def set_state(run: Path, slug: str, state: str, note: str | None) -> dict:
     return entry
 
 
+def run_settings(run: Path) -> dict:
+    """Settings saved in RUN/run.json. A run started before `agent_models` existed gets them filled in
+    (and saved) from its saved `*_model` values, so `--resume` passes short model names too."""
+    path = run / "run.json"
+    meta = load_json(path)
+    saved = meta.get("settings") or {}
+    if not saved:
+        raise ValueError(f"{path}: no settings saved; start a new run")
+    if "agent_models" not in saved:
+        saved["agent_models"] = {role: cfg.agent_alias(saved[f"{role}_model"]) for role in cfg.AGENT_ROLES}
+        meta["settings"] = saved
+        dump_json(meta, path)
+        log.info("run.json had no agent_models; added %s", saved["agent_models"])
+    return saved
+
+
 def pending(run: Path) -> list[str]:
     ledger = load_json(run / "progress.json")["agencies"]
     roster_path = run / "roster.json"
@@ -138,7 +154,7 @@ def main() -> int:
     sp.add_argument("slug")
     sp.add_argument("state")
     sp.add_argument("--note")
-    for name in ("show", "pending"):
+    for name in ("show", "pending", "settings"):
         p = sub.add_parser(name)
         p.add_argument("run", type=Path)
     args = ap.parse_args()
@@ -151,6 +167,8 @@ def main() -> int:
             print(json.dumps(set_state(args.run, args.slug, args.state, args.note), ensure_ascii=False))
         elif args.cmd == "show":
             print(json.dumps(load_json(args.run / "progress.json"), ensure_ascii=False, indent=2))
+        elif args.cmd == "settings":
+            print(json.dumps(run_settings(args.run), ensure_ascii=False, indent=2))
         elif args.cmd == "pending":
             print("\n".join(pending(args.run)))
     except (reg.RegistryError, cfg.SettingsError, ValueError, FileNotFoundError) as exc:

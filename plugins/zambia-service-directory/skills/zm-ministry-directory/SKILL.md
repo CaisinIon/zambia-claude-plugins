@@ -48,6 +48,7 @@ After intake, say the choices in one line, then run autonomously as before. No m
   Keys: `roster_model`, `researcher_model`, `verifier_model`, `max_parallel`, `reverify_scope` (pending|all), `live_check` (script|llm),
   `verifier_chunk`, `audit_sample`, `audit_focus` (researcher_written|all).
 - `--resume <RUN>`: continue an interrupted run (skip steps 1–2; `"$PY" -B "$S/run_state.py" pending RUN` lists what is left).
+  Read the saved settings with `"$PY" -B "$S/run_state.py" settings RUN` (= SET; it adds `agent_models` to a run started before they existed).
 - `--ministry-no N`: override the registry number (normally taken from `input/ministries.json`, or the next free number).
 - `--no-dotgov`: research DotGov services like any other (no placeholders). Flag-only; never ask about it.
 
