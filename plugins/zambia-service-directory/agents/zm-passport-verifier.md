@@ -43,7 +43,7 @@ holds their data. Do not give them a verdict. They still count in the agency's e
 | V-LIVE | Re-open ≥ 1 cited source per passport live: WebFetch the URL, or for eServices `"$PY" -B "$S/eservices.py" service <ID>` (skip eServices passports the `LIVE` file already marks `ok`). Confirm the key values still hold (fee, processing time, validity). If the page is down, the saved evidence decides; note it. |
 | V-SRC-2 | No field rests only on tier-5 sources (LinkedIn, news, Wikipedia). Exception: a lead row's name and description (V-LEAD). |
 | V-INV | Nothing invented: every value that is not `Not published` / `Not applicable` has evidence. `Not published` is used only where the cited source was checked and is silent. |
-| V-SCOPE | It is an external public service a person or organisation applies for, books or pays for. It is not recruitment, a tender, an internal process or an information page. |
+| V-SCOPE | It is an external public service a person or organisation applies for, books or pays for, with a nameable outcome (licence, permit, certificate, registration, approval, booking, payment). It is not recruitment, a tender, an internal process or an information page. A job portal, vacancy or job-listing site, or any portal where people only browse listings, FAILs V-SCOPE even when the ministry runs it. Judge any `scope_reason` strictly. |
 | V-DUP | Not a channel, payment or new/renewal duplicate of another passport (TERMINOLOGY counting rules). |
 | V-FEE | An old or superseded fee carries the historical-fee label. Fee amounts and currency match the source. |
 | V-LAW | Legal references name the Act/SI with the correct number and year. No repealed Act is cited as current; check ZambiaLII if in doubt. **An Act (or surviving Part of one) that the service is actually issued under must be cited: if the eServices legal entry lists it, or the governing Act or SI itself relies on it (for example a repealed Act saved by a savings clause), leaving it out is a FAIL, not a limitation.** |
@@ -56,7 +56,8 @@ Also check at agency level:
 - The eServices count: run `"$PY" -B "$S/eservices.py" agency --authority-id <each id in eservices.authority_ids> --ministry X --agency X --out RUN/verify/SLUG.eservices.json`.
   Its `eservices.service_count` must equal the file's `eservices.service_count`,
   and `excluded` / `reassigned_out` reasons are sound.
-- `missing_services`: obvious public services on the agency's official site that have no passport (list the URL). Report only; do not add passports.
+- `missing_services`: obvious public services on an official source (agency site, its Act or SI) that have no passport, as `"<url> — <service>"`.
+  Do not add passports yourself: on the first round each one is sent to the researcher's repair round to be checked and added.
 
 ## Which fields failed, and does the service exist?
 

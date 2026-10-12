@@ -114,6 +114,10 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 - Old fees: `Historical fee — current amount requires confirmation. <year> <source>: <amount>` + `historical_fee: true`.
 - Cite exact legislation title, number and year where available.
 - In a repair round, change only what `REPAIR` lists. Answer each finding in `verification_notes`.
+  A `REPAIR` item with `index: null` is a **missing service** the verifier saw: check it (DotGov `match` first), and add it as a
+  new passport (step 3) or lead row (step 3b) if it is a distinct public service; otherwise add one `source_limitations` line saying why not.
+- A service whose name contains job, vacancy, recruit, tender, procure or staff needs `scope_reason` (what an external applicant
+  applies for, books or pays for). Job portals, vacancy and job-listing sites are never services: do not add them.
 - Never change a DotGov placeholder, and never research a service that `dotgov_registry.py match` reports as `match`.
 
 ## Output

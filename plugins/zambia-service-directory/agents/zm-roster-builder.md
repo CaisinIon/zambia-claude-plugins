@@ -27,6 +27,10 @@ Shell setup (project root): `PY="${CLAUDE_PLUGIN_DATA}/venv/bin/python"; [ -x "$
    - eServices providers: run `"$PY" -B "$S/eservices.py" catalogue`, then `"$PY" -B "$S/eservices.py" find-agency "<name or acronym>"`.
      Also scan every provider whose `short_name` looks like this ministry's code (e.g. MOTA, MoT).
    - `EXISTING` agencies from the previous workbook. Keep each one, or explain why it is dropped.
+     An `EXISTING` agency with `status: "Excluded"` and `rows: 0` was excluded because an earlier version found no service.
+     Set it `Included` again so the researcher re-checks it with the current rules (bot-wall recovery, lead rows).
+     Keep it `Excluded` only for a reason from step 3 (internal unit, policy-only, educational institution, moved to another ministry),
+     and write that reason, not the old "0 services verified" text.
    - LinkedIn and news are leads only. Confirm each lead on an official page.
 3. **Screen each candidate.** It is `Included` if it delivers at least one external, public-facing service (see
    `$R/TERMINOLOGY.md` → Inclusion). Otherwise it is `Excluded` with a reason

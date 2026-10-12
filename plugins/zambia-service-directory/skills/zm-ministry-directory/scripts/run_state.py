@@ -79,7 +79,11 @@ def init(ministry: str, import_path: Path | None, include_local: bool, ministry_
         wb = read_workbook(previous)
         counts = {s["agency"]: len(s["rows"]) for s in wb["sections"]}
         existing = [{"name": a.get("Entity"), "entity_type": a.get("Entity Type"), "rows": counts.get(a.get("Entity"), 0),
-                     "notes": a.get("Notes"), "source_link": a.get("Source Link")} for a in wb["agencies"]]
+                     "status": a.get("Status") or "Included", "notes": a.get("Notes"), "source_link": a.get("Source Link")}
+                    for a in wb["agencies"]]
+        recheck = [e["name"] for e in existing if e["status"] == "Excluded" and not e["rows"]]
+        if recheck:  # excluded only for finding 0 services: research again with the current rules
+            log.info("previously excluded with 0 services, to re-check: %s", recheck)
     catalogue = load_catalogue()
     registry = dotgov_registry.load() if dotgov else None
     dotgov_meta = ({"enabled": True, "path": registry["_path"], "sha256": registry["source"]["sha256"],

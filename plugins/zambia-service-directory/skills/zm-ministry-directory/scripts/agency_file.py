@@ -26,6 +26,8 @@ Usage:
       (demoted_fields, Verified with limitations) if the verifier confirmed the service exists;
       a service backed only by a tier-5 source -> Unconfirmed lead row; otherwise Unresolved.
       A lead row that passes -> Unconfirmed lead. An unconfirmed removal is reverted.
+      Services the verifier lists in missing_services become repair items (index null) on the
+      first round; with --final they are only recorded in source_limitations.
 """
 from __future__ import annotations
 
@@ -246,7 +248,7 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
     agency = load_json(path)
     verdict = load_json(run / "verify" / f"{slug}.json")
     results = {"Verified": 0, "Verified with limitations": 0, "repair": 0, "Unresolved": 0,
-               "demoted": 0, "lead": 0, c.LEAD_VERIFICATION: 0}
+               "demoted": 0, "lead": 0, c.LEAD_VERIFICATION: 0, "missing": 0}
     repairs = []
     for v in verdict.get("passports", []):
         i = v["index"]
@@ -277,9 +279,19 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
             p.update(verification="Pending", verification_notes=f"REPAIR: {notes}")
             results["repair"] += 1
             repairs.append({"index": i, "service_name": p["service_name"], "repair": notes})
-    if verdict.get("missing_services"):
+    missing = verdict.get("missing_services") or []
+    if missing and not final:
+        # the repair round checks each one: add it as a passport (or a lead row), or say why not
+        for m in missing:
+            repairs.append({"index": None, "service_name": m,
+                            "repair": f"MISSING SERVICE: the verifier saw '{m}' on an official source with no passport. "
+                                      "Check it; add a passport (step 3) or a lead row (step 3b) if it is a distinct public "
+                                      "service, else record why not in source_limitations."})
+            log.debug("missing service %s -> repair round: %s", slug, m)
+        results["missing"] = len(missing)
+    elif missing:
         agency.setdefault("source_limitations", []).extend(
-            f"verifier: possible missing service {m}" for m in verdict["missing_services"])
+            f"verifier: possible missing service {m}" for m in missing)
     dump_json(agency, path)
     log.info("verdict applied %s final=%s %s", slug, final, results)
     return {"slug": slug, "final": final, **results, "agency_verdict": verdict.get("verdict"), "repairs": repairs}

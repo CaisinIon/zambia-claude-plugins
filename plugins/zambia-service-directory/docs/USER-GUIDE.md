@@ -251,6 +251,12 @@ Service Name and Description are already filled in from the DotGov list.
 
 Run the same command again. The tool uses the ministry's current workbook as the starting point. Every row is re-checked, and the report shows what was added, corrected or removed since the last version.
 
+After updating the plugin (for example to v1.5 or later), re-run every ministry once:
+- Agencies that an older version excluded with "0 services verified" are researched again. Sites that blocked the old version
+  are now read through Chrome or the Internet Archive.
+- Services the verifier notices on an official source but that have no row yet are checked and added in the repair round.
+- Job portals and vacancy listings are never written as services.
+
 ## 11. Costs and time
 
 - One run costs tokens (a real Ministry of Tourism run: about 2.0M subagent tokens, plus the main session's own, which we could not measure).

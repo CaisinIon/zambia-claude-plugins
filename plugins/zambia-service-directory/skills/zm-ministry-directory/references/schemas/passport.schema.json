@@ -249,6 +249,13 @@
           }
         }
       }
+    },
+    "scope_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "why a service whose name looks out of scope (job, vacancy, recruitment, tender, staff) is an external service"
     }
   },
   "$defs": {

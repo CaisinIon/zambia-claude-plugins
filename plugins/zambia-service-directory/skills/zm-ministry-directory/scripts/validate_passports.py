@@ -20,7 +20,8 @@ Rule ids (severity):
   R-LINK (error)      non-https link or bare homepage without link_reason
   R-AGENCY (error)    passport ministry/agency differs from its agency file; eServices status/count mismatch
   R-ENTITY (warn)     entity type not in the fixed list
-  R-SCOPE (warn)      service name looks internal (recruitment, tender, ...)
+  R-SCOPE (error)     web-found service whose name looks out of scope (job portal, vacancies, recruitment, tender, ...)
+                      without a `scope_reason`; (warn) with a scope_reason, or on an eServices service
   R-ELIG-LEN (warn)   eligibility longer than 600 characters (summarise)
   R-DRAFT (warn)      draft_flags left on a passport marked Verified
   R-PENDING (warn)    passport not yet verified
@@ -236,7 +237,13 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
         f.add("R-LINK", "error", name, f"bare homepage link without link_reason: {link!r}", p)
 
     if OUT_OF_SCOPE.search(str(p.get("service_name") or "")):
-        f.add("R-SCOPE", "warn", name, "service name looks internal/out of scope", p)
+        # eServices lists it as a service; a web-found one must say why it is an external service
+        strict = p.get("origin") != "eservices" and not p.get("scope_reason")
+        log.debug("R-SCOPE %r origin=%s scope_reason=%r", p.get("service_name"), p.get("origin"), p.get("scope_reason"))
+        f.add("R-SCOPE", "error" if strict else "warn", name,
+              "service name looks out of scope (job portal, vacancies, recruitment, tender, staff)"
+              + ("; drop it, or give scope_reason: what an external applicant applies for, books or pays for" if strict
+                 else f"; scope_reason: {p.get('scope_reason')!r}" if p.get("scope_reason") else ""), p)
     if len(str(p.get("eligibility_requirements") or "")) > MAX_ELIGIBILITY:
         f.add("R-ELIG-LEN", "warn", name, "eligibility longer than 600 chars; summarise to 1–3 sentences", p)
     if p.get("draft_flags") and p.get("verification") in c.WRITABLE_VERIFICATION:

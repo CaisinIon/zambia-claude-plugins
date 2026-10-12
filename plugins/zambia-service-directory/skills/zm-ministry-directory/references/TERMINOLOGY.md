@@ -122,10 +122,15 @@ Exclude:
 - internal government processes and staff services;
 - recruitment, vacancies and procurement or tenders;
 - general information pages, news, strategic plans;
+- job portals, vacancy or job-listing sites and internship boards (also when the ministry runs them for the public),
+  and any portal where people only browse listings instead of applying to the agency for an outcome;
 - projects or programmes that are not something a person applies for or books.
 
 A page that only publishes information (e.g. a calendar) is not a service unless the public can
 request, book, apply or pay for something through it.
+If you cannot say who applies and what they get (a licence, permit, certificate, registration, approval, booking
+or payment), it is not a service. A web-found service whose name contains job, vacancy, recruit, tender, procure or staff
+needs `scope_reason` (rule R-SCOPE); without one it is an error.
 
 Do not assume an agency provides a service because a similar agency does.
 

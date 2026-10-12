@@ -66,6 +66,11 @@ A found service is not dropped because one field is unproven. On the final verdi
 The builder writes lead rows; Agencies Notes count confirmed rows and add `; {leads} unconfirmed leads from non-official sources`.
 An agency is auto-excluded only with no row at all; the reason then names the cause
 (`0 services verified; {found} services found but not confirmed ({cause})`).
+Coverage and scope (v1.5.1, after the full Ministry of Labour run):
+- `missing_services` from the first verifier round become repair items (`index: null`); the researcher adds them or says why not.
+- A web-found service whose name contains job, vacancy, recruit, tender, procure or staff is an `R-SCOPE` **error** without `scope_reason`.
+- `existing_agencies` carries the previous `status`; the roster re-includes agencies excluded only for having 0 services.
+
 This came from customer feedback (NAPSA, Ministry of Labour, 2026-10-12): see `.ai-factory/reports/napsa-excluded-investigation.md`.
 
 ## DotGov services (skipped, filled later)
