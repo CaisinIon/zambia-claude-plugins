@@ -6,9 +6,13 @@ Usage: fetch_source.py <url> --out <run>/evidence [--tier N] [--note "..."]
 Saves under <out>/sources/<sha8>-<slug>/: raw file, text.txt, meta.json.
 Prints meta JSON (includes text_path) on stdout; read or grep text.txt afterwards.
 
-Exit codes: 0 ok · 3 JavaScript-rendered page (use chromeDevtools MCP:
-navigate_page + take_snapshot, then save the snapshot text with --from-text) ·
-4 HTTP/network error · 5 empty document.
+Exit codes: 0 ok · 3 JavaScript-rendered page, bot wall (Incapsula, Cloudflare, …)
+or an HTML page with no text (use chromeDevtools MCP: navigate_page + take_snapshot,
+then save the snapshot text with --from-text) · 4 HTTP/network error ·
+5 empty PDF or text document.
+
+A bot-wall challenge page is retried (BOT_RETRY_DELAYS) with the same session cookies
+before exit 3; meta then holds `bot_wall` (vendor) and `attempts`.
 
 --from-text FILE  store text captured another way (e.g. a browser snapshot) as evidence for <url>.
 """
@@ -20,6 +24,7 @@ import io
 import json
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -39,6 +44,14 @@ TIMEOUT = 45
 MIN_TEXT_CHARS = 500
 SPA_MARKERS = ("<app-root", "ng-version", "id=\"root\"></div>", "id=\"__next\"", "enable javascript",
                "you need to enable javascript")
+# Bot-protection challenge pages (lower-case substrings of the raw body) -> vendor.
+BOT_WALL_MARKERS = (
+    ("_incapsula_resource", "incapsula"), ("incap_ses_", "incapsula"),
+    ("/cdn-cgi/challenge-platform", "cloudflare"), ("cf-chl", "cloudflare"),
+    ("<title>just a moment...</title>", "cloudflare"), ("attention required! | cloudflare", "cloudflare"),
+    ("sucuri_cloudproxy", "sucuri"),
+)
+BOT_RETRY_DELAYS = (3, 8)  # seconds before the 2nd and 3rd attempt
 
 
 def slugify(url: str) -> str:
@@ -71,6 +84,17 @@ def pdf_to_text(content: bytes) -> str:
     return "\n".join(pages)
 
 
+def detect_bot_wall(raw: bytes, text: str = "") -> str | None:
+    """Vendor name when the body is a bot-protection challenge, else None."""
+    head = raw[:200_000].decode("utf-8", "ignore").lower()
+    for marker, vendor in BOT_WALL_MARKERS:
+        if marker in head and len(text) < MIN_TEXT_CHARS * 4:
+            return vendor
+    if "access denied" in head and "reference #" in head and len(text) < MIN_TEXT_CHARS:
+        return "akamai"
+    return None
+
+
 def is_spa_shell(raw: bytes, text: str) -> bool:
     head = raw[:1_000_000].decode("utf-8", "ignore").lower()
     return len(text) < MIN_TEXT_CHARS and any(m in head for m in SPA_MARKERS)
@@ -86,15 +110,18 @@ def extract_text(raw: bytes, content_type: str, url: str) -> tuple[str, str]:
     return raw.decode("utf-8", "ignore"), "text"
 
 
-def download(url: str) -> tuple[requests.Response, bool]:
-    """GET with a browser UA; if TLS verification fails, retry unverified and report it."""
-    headers = {"User-Agent": BROWSER_UA, "Accept": "text/html,application/pdf,*/*;q=0.8"}
+def download(url: str, session: requests.Session | None = None) -> tuple[requests.Response, bool]:
+    """GET with a browser UA; if TLS verification fails, retry unverified and report it.
+    A shared session keeps the cookies a bot-wall challenge sets between attempts."""
+    get = (session or requests).get
+    headers = {"User-Agent": BROWSER_UA, "Accept": "text/html,application/pdf,*/*;q=0.8",
+               "Accept-Language": "en-GB,en;q=0.9"}
     try:
-        return requests.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True), True
+        return get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True), True
     except requests.exceptions.SSLError as exc:
         log.warning("TLS verification failed for %s (%s); retrying without verification", url, exc)
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        return requests.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True, verify=False), False
+        return get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True, verify=False), False
 
 
 def save(url: str, out: Path, raw: bytes, text: str, kind: str, meta_extra: dict) -> dict:
@@ -116,24 +143,50 @@ def save(url: str, out: Path, raw: bytes, text: str, kind: str, meta_extra: dict
 
 def fetch(url: str, out: Path, tier: int | None = None, note: str | None = None) -> tuple[int, dict]:
     log.debug("fetch start url=%s", url)
-    try:
-        resp, tls_ok = download(url)
-    except requests.RequestException as exc:
-        log.error("network error url=%s error=%s", url, exc)
-        return 4, {"url": url, "error": str(exc)}
+    session = requests.Session()
+    attempts, wall = 0, None
+    for delay in (0, *BOT_RETRY_DELAYS):
+        if delay:
+            log.info("bot wall vendor=%s url=%s; retry %d in %ds", wall, url, attempts + 1, delay)
+            time.sleep(delay)
+        attempts += 1
+        try:
+            resp, tls_ok = download(url, session=session)
+        except requests.RequestException as exc:
+            log.error("network error url=%s error=%s", url, exc)
+            return 4, {"url": url, "error": str(exc), "attempts": attempts}
+        raw = resp.content
+        text, kind = extract_text(raw, resp.headers.get("Content-Type", ""), resp.url)
+        wall = detect_bot_wall(raw, text) if kind in ("html", "text") else None
+        log.debug("attempt=%d url=%s status=%s bytes=%d chars=%d bot_wall=%s",
+                  attempts, url, resp.status_code, len(raw), len(text), wall)
+        if not wall:
+            break
+    if wall:
+        extra = {"final_url": resp.url, "status": resp.status_code, "content_type": resp.headers.get("Content-Type"),
+                 "tls_verified": tls_ok, "tier": tier, "note": note, "bot_wall": wall, "attempts": attempts}
+        log.warning("bot wall vendor=%s url=%s after %d attempts; use chromeDevtools MCP then --from-text",
+                    wall, url, attempts)
+        return 3, save(url, out, raw, text, kind, extra)
+    if attempts > 1:
+        log.info("bot wall passed url=%s on attempt %d", url, attempts)
     if resp.status_code >= 400:
         log.error("HTTP %s url=%s", resp.status_code, url)
-        return 4, {"url": url, "status": resp.status_code, "error": f"HTTP {resp.status_code}"}
-    raw = resp.content
-    text, kind = extract_text(raw, resp.headers.get("Content-Type", ""), resp.url)
+        return 4, {"url": url, "status": resp.status_code, "error": f"HTTP {resp.status_code}", "attempts": attempts}
     extra = {"final_url": resp.url, "status": resp.status_code,
              "content_type": resp.headers.get("Content-Type"), "tls_verified": tls_ok,
              "tier": tier, "note": note}
+    if attempts > 1:
+        extra["attempts"] = attempts
     if kind == "html" and is_spa_shell(raw, text):
         meta = save(url, out, raw, text, kind, {**extra, "spa": True})
         log.warning("JS-rendered page url=%s; use chromeDevtools MCP then --from-text", url)
         return 3, meta
     if not text.strip():
+        if kind == "html":
+            # an HTML page with no text is almost always rendered by JavaScript or blocked, not empty
+            log.warning("HTML page without text url=%s bytes=%d; use chromeDevtools MCP then --from-text", url, len(raw))
+            return 3, save(url, out, raw, text, kind, {**extra, "spa": True, "empty": True})
         log.warning("empty text url=%s kind=%s (scanned PDF?)", url, kind)
         return 5, save(url, out, raw, text, kind, {**extra, "empty": True})
     return 0, save(url, out, raw, text, kind, extra)

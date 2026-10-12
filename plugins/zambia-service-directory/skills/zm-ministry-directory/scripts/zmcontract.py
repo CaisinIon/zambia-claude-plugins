@@ -60,9 +60,24 @@ ENTITY_TYPES = [
     "Statutory Board", "Statutory Council", "Statutory Authority", "Statutory Institute",
 ]
 DOTGOV_VERIFICATION = "DotGov placeholder"
-VERIFICATION = ["Pending", "Verified", "Verified with limitations", "Unresolved", DOTGOV_VERIFICATION]
-WRITABLE_VERIFICATION = {"Verified", "Verified with limitations", DOTGOV_VERIFICATION}
-ORIGINS = ["eservices", "official_other", "imported"]
+LEAD_VERIFICATION = "Unconfirmed lead"
+VERIFICATION = ["Pending", "Verified", "Verified with limitations", "Unresolved", DOTGOV_VERIFICATION,
+                LEAD_VERIFICATION]
+WRITABLE_VERIFICATION = {"Verified", "Verified with limitations", DOTGOV_VERIFICATION, LEAD_VERIFICATION}
+ORIGINS = ["eservices", "official_other", "imported", "lead"]
+
+# Unconfirmed leads: a service seen only in tier-5 sources (news, LinkedIn, directories).
+# Written with name + prefixed description; every LEAD_FIELDS value is NOT_PUBLISHED.
+LEAD_ORIGIN = "lead"
+LEAD_PREFIX = "Unconfirmed lead — not confirmed on an official source: "
+LEAD_FIELDS = [
+    "who_can_apply", "eligibility_requirements", "fee", "processing_time", "validity", "legal_references",
+]
+# Verifier rules that fail one field (repaired by demoting the field to NOT_PUBLISHED on the final round).
+FIELD_LEVEL_RULES = {"V-SRC-1", "V-SRC-2", "V-INV", "V-FEE", "V-LAW", "V-LIVE"}
+# Verifier rules that reject the whole row (not a distinct public service).
+ROW_LEVEL_RULES = {"V-SCOPE", "V-DUP", "V-REMOVE"}
+DEMOTABLE_FIELDS = [f for f in SOURCED_FIELDS if f != "service_name"]
 ACTIONS = ["add", "correct", "remove", "unchanged"]
 
 # Source tiers (see references/SOURCES.md). Tier 5 = lead only, never sufficient alone.
@@ -93,7 +108,11 @@ NOTES_LISTED_ONLY = "{total} verified services, all on Zambia eServices"
 NOTES_NOT_LISTED = "{total} services verified from {other_source}; not listed on Zambia eServices"
 NOTES_LISTED_UNDER = "{total} services; listed under {provider} on Zambia eServices"
 NOTES_NONE = "0 services verified; {reason}"
+NOTES_NONE_FOUND_BUT_DROPPED = "0 services verified; {found} services found but not confirmed ({cause})"
+NOTES_LEADS_SUFFIX = "; {leads} unconfirmed leads from non-official sources"
 NOTES_DOTGOV_SUFFIX = "; {dotgov} from DotGov (data to be filled)"
+# After dotgov_fill.py batch has filled every placeholder of the workbook.
+NOTES_DOTGOV_FILLED_SUFFIX = "; {dotgov} from DotGov eServices (filled from the DotGov database on {date})"
 
 LEGAL_REF_PATTERNS = [
     re.compile(r"Act,?\s+No\.?\s*\d+,?\s+(of\s+)?\d{4}", re.I),

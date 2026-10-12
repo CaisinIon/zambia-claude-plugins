@@ -21,8 +21,11 @@ Usage:
       Merge <RUN>/verify/<slug>.part*.json into <RUN>/verify/<slug>.json.
   agency_file.py apply-verdict <RUN> <slug> [--final]
       Apply <RUN>/verify/<slug>.json: PASS -> Verified, PASS_WITH_LIMITS ->
-      Verified with limitations, FAIL -> stays Pending with notes (repair round),
-      or Unresolved with --final. An unconfirmed removal is reverted.
+      Verified with limitations, FAIL -> stays Pending with notes (repair round).
+      With --final a FAIL keeps the service when it can: failed fields -> Not published
+      (demoted_fields, Verified with limitations) if the verifier confirmed the service exists;
+      a service backed only by a tier-5 source -> Unconfirmed lead row; otherwise Unresolved.
+      A lead row that passes -> Unconfirmed lead. An unconfirmed removal is reverted.
 """
 from __future__ import annotations
 
@@ -45,6 +48,68 @@ from zmworkbook import eservices_id_from_link, read_workbook
 
 log = get_logger("agency_file")
 VERDICT_MAP = {"PASS": "Verified", "PASS_WITH_LIMITS": "Verified with limitations"}
+
+
+def _tier5_url(p: dict) -> str | None:
+    """First https lead URL backing the service name, if any."""
+    for s in (p.get("field_sources") or {}).get("service_name", []):
+        if s.get("tier") == 5 and str(s.get("url", "")).startswith("https://"):
+            return s["url"]
+    return None
+
+
+def _demote(p: dict, fields: list[str], reason: str) -> None:
+    """Set each field to Not published and record what was there."""
+    demoted = p.setdefault("demoted_fields", [])
+    for f in fields:
+        if p.get(f) in c.PLACEHOLDERS:
+            continue
+        demoted.append({"field": f, "old_value": p.get(f), "reason": reason})
+        log.debug("demote %r %s: %r -> %s (%s)", p.get("service_name"), f, p.get(f), c.NOT_PUBLISHED, reason)
+        p[f] = c.NOT_PUBLISHED
+        if f == "fee":
+            p["historical_fee"] = False
+
+
+def to_lead(p: dict, lead_url: str, reason: str) -> None:
+    """Turn a passport into an Unconfirmed lead row (name + prefixed description; other fields Not published)."""
+    _demote(p, [f for f in c.LEAD_FIELDS], reason)
+    desc = (p.get("service_description") or "").strip()
+    if desc in c.PLACEHOLDERS or not desc:
+        desc = p["service_name"]
+    if not desc.startswith(c.LEAD_PREFIX):
+        p["service_description"] = c.LEAD_PREFIX + desc
+    p.update(origin=c.LEAD_ORIGIN, eservices_id=None, source_link=lead_url, verification=c.LEAD_VERIFICATION)
+    log.debug("lead row %r <- %s", p.get("service_name"), lead_url)
+
+
+def final_fail(p: dict, v: dict, notes: str) -> str:
+    """Decide the fate of a passport that still FAILs on the final round.
+    Returns the result key: 'demoted', 'lead' or 'Unresolved'."""
+    rules = set(v.get("rules") or [])
+    failed = [f for f in (v.get("failed_fields") or []) if f in c.SOURCED_FIELDS]
+    exists = v.get("exists_confirmed")
+    if exists is None and p.get("origin") == "eservices":
+        exists = True  # listed on eServices (tier 1): the service exists
+    origin = p.get("origin")
+    if origin == "imported" or rules & c.ROW_LEVEL_RULES:
+        why = "imported row" if origin == "imported" else f"row-level rule {sorted(rules & c.ROW_LEVEL_RULES)}"
+        log.debug("final FAIL %r stays Unresolved: %s", p.get("service_name"), why)
+        p.update(verification="Unresolved", verification_notes=notes)
+        return "Unresolved"
+    if (origin != c.LEAD_ORIGIN and exists and failed and rules <= c.FIELD_LEVEL_RULES
+            and set(failed) <= set(c.DEMOTABLE_FIELDS)):
+        _demote(p, failed, f"verifier {', '.join(sorted(rules)) or 'FAIL'}: {v.get('notes') or v.get('fix_hint') or ''}".strip())
+        p.update(verification="Verified with limitations",
+                 verification_notes=f"fields set to {c.NOT_PUBLISHED} after failed verification ({', '.join(failed)}); {notes}")
+        return "demoted"
+    lead_url = _tier5_url(p)
+    if origin != c.LEAD_ORIGIN and not exists and lead_url:
+        to_lead(p, lead_url, f"not confirmed on an official source: {notes}")
+        p["verification_notes"] = f"converted to an unconfirmed lead; {notes}"
+        return "lead"
+    p.update(verification="Unresolved", verification_notes=notes)
+    return "Unresolved"
 
 
 def _roster_entry(run: Path, slug: str) -> tuple[dict, dict]:
@@ -180,7 +245,8 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
     path = run / "agencies" / f"{slug}.json"
     agency = load_json(path)
     verdict = load_json(run / "verify" / f"{slug}.json")
-    results = {"Verified": 0, "Verified with limitations": 0, "repair": 0, "Unresolved": 0}
+    results = {"Verified": 0, "Verified with limitations": 0, "repair": 0, "Unresolved": 0,
+               "demoted": 0, "lead": 0, c.LEAD_VERIFICATION: 0}
     repairs = []
     for v in verdict.get("passports", []):
         i = v["index"]
@@ -196,7 +262,7 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
             continue
         notes = "; ".join(filter(None, [", ".join(v.get("rules") or []), v.get("notes"), v.get("fix_hint")]))
         if v["verdict"] in VERDICT_MAP:
-            p["verification"] = VERDICT_MAP[v["verdict"]]
+            p["verification"] = c.LEAD_VERIFICATION if p.get("origin") == c.LEAD_ORIGIN else VERDICT_MAP[v["verdict"]]
             p["verification_notes"] = notes or None
             p.pop("draft_flags", None)
             results[p["verification"]] += 1
@@ -206,8 +272,7 @@ def apply_verdict(run: Path, slug: str, final: bool = False) -> dict:
                      verification_notes=f"removal not confirmed by verifier: {notes}")
             results["Unresolved"] += 1
         elif final:
-            p.update(verification="Unresolved", verification_notes=notes)
-            results["Unresolved"] += 1
+            results[final_fail(p, v, notes)] += 1
         else:
             p.update(verification="Pending", verification_notes=f"REPAIR: {notes}")
             results["repair"] += 1

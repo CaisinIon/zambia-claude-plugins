@@ -24,6 +24,27 @@ Deprecated values, which are rewritten when a row is written:
 Only write `Not published` after the official sources were actually checked for that field.
 If a row could not be re-checked, set `verification = "Unresolved"`. An unresolved passport is not written.
 
+A found service is never dropped just because one field is unproven:
+- **Demoted field.** On the final verdict, a field that fails a field-level rule (V-SRC-1, V-SRC-2, V-INV, V-FEE, V-LAW, V-LIVE)
+  becomes `Not published`, its old value and reason go to `demoted_fields`, and the row is `Verified with limitations`,
+  as long as the service itself is shown on an official (tier 1–4) page. `service_name` is never demoted.
+- Only V-SCOPE / V-DUP failures (not a distinct public service) or a service with no source at all leave a row `Unresolved`.
+
+## Unconfirmed leads
+
+A service seen **only** in tier-5 sources (news, LinkedIn, directories, unofficial pages), after the official site was tried, is still written:
+
+| Item | Exact text / rule |
+|---|---|
+| `origin` | `lead` |
+| `verification` value | `Unconfirmed lead` |
+| Service Description prefix | `Unconfirmed lead — not confirmed on an official source: ` then one sentence from the lead |
+| Who Can Apply, Eligibility Requirements, Fee, Processing Time, Validity, Legal References | `Not published` |
+| Source / Service Link | the lead URL (https) |
+| `field_sources.service_name` | ≥ 1 tier-5 source |
+
+Leads count in the Overview "Service Count", but not in the "verified" number of the Notes sentence (see the leads suffix below).
+
 ## DotGov services (placeholders)
 
 DotGov built the services in `templates/dotgov_services.json`; their ServiceID equals the eServices ID.
@@ -61,8 +82,16 @@ Pick the first pattern that fits. `{other_source}` is a short label, e.g. `the D
 | Services on eServices under another provider | `{total} services; listed under {provider} on Zambia eServices` |
 | Not listed | `{total} services verified from {other_source}; not listed on Zambia eServices` |
 | None found | `0 services verified; {reason}` |
+| Services found, none confirmed | `0 services verified; {found} services found but not confirmed ({cause})` |
+
+When the agency has lead rows, append `; {leads} unconfirmed leads from non-official sources`
+(the leading number then counts confirmed rows only). An agency whose only rows are leads uses
+`None found` with the reason `not found on official sources`, plus the leads suffix
+(e.g. `0 services verified; not found on official sources; 3 unconfirmed leads from non-official sources`).
 
 When the agency has DotGov placeholder rows, append `; {dotgov} from DotGov (data to be filled)` to the chosen pattern.
+After `dotgov_fill.py batch` fills every placeholder of a workbook, that suffix becomes
+`; {dotgov} from DotGov eServices (filled from the DotGov database on {date})` (`{date}` = YYYY-MM-DD of the fill).
 The leading number still counts every written row, placeholders included.
 
 ## Counting methodology

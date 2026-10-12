@@ -32,6 +32,11 @@ Set `OUT` = RUN if given, else AUD.
 mark services DotGov built; their data is filled later from the DotGov database. They are counted (`dotgov_rows`, `dotgov_placeholders`),
 never sampled for re-verification, and only a malformed token (`W-DOTGOV`, `R-DOTGOV`) is an error.
 
+**Unconfirmed leads are expected, not failures.** A row whose Service Description starts with
+`Unconfirmed lead — not confirmed on an official source: ` is a service found only in non-official sources.
+Its other fields must be `Not published` (`W-LEAD`, `R-LEAD` otherwise). It can be sampled; the verifier judges it by V-LEAD.
+Fields set to `Not published` after a failed verification (`R-DEMOTED`, a warning) are also expected.
+
 ## Steps
 
 1. **Format and totals.** `"$PY" -B "$S/validate_workbook.py" <workbook> --out OUT/workbook_audit.json --summary`

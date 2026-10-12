@@ -72,6 +72,10 @@ def agencies_from_sheet(data: dict) -> list[dict]:
                  "origin": "eservices" if sid else "official_other", "eservices_id": sid,
                  "action": "unchanged", "field_sources": {}, "conflicts": [],
                  "verification": "Verified", "sheet_row": r["row"]}
+            if str(r.get("service_description") or "").startswith(c.LEAD_PREFIX):  # unconfirmed lead row
+                p.update(origin=c.LEAD_ORIGIN, eservices_id=None, verification=c.LEAD_VERIFICATION,
+                         field_sources={"service_name": [{"url": r.get("source_link") or "", "tier": 5}]})
+                log.debug("sheet row %s is an unconfirmed lead: %r", r["row"], r.get("service_name"))
             cells = [dotgov_registry.parse_cell(r.get(f)) for f in c.DOTGOV_FIELDS]
             first = next((x for x in cells if x), None)
             if first:  # DotGov placeholder row (fully or partly unfilled)

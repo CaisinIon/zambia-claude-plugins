@@ -80,10 +80,33 @@ def dotgov_suffix(passports: list[dict]) -> str:
     return c.NOTES_DOTGOV_SUFFIX.format(dotgov=n) if n else ""
 
 
+def leads_suffix(passports: list[dict]) -> str:
+    n = sum(1 for p in passports if p.get("origin") == c.LEAD_ORIGIN)
+    return c.NOTES_LEADS_SUFFIX.format(leads=n) if n else ""
+
+
 def notes_for(agency: dict, rows: list[dict], passports: list[dict]) -> str:
+    """Notes sentence; the leading number counts confirmed rows, unconfirmed leads go in a suffix."""
     if agency.get("notes"):
         return agency["notes"]
-    return _notes_core(agency, rows, passports) + dotgov_suffix(passports)
+    pairs = [(r, p) for r, p in zip(rows, passports) if p.get("origin") != c.LEAD_ORIGIN]
+    if not pairs and len(passports) > 0:  # only lead rows
+        core = c.NOTES_NONE.format(reason="not found on official sources")
+    else:
+        core = _notes_core(agency, [r for r, _ in pairs], [p for _, p in pairs])
+    return core + leads_suffix(passports) + dotgov_suffix(passports)
+
+
+def dropped_reason(agency: dict) -> str | None:
+    """Exclusion reason when the researcher found services but none could be written."""
+    found = [p for p in agency.get("passports", [])
+             if p.get("action") != "remove" and not dotgov_registry.is_placeholder(p)]
+    if not found:
+        return None
+    blocked = any("blocked" in str(x).lower() or "bot wall" in str(x).lower()
+                  for x in agency.get("source_limitations") or [])
+    cause = "official site blocked automated access" if blocked else "failed verification"
+    return c.NOTES_NONE_FOUND_BUT_DROPPED.format(found=len(found), cause=cause).split("; ", 1)[1]
 
 
 def _notes_core(agency: dict, rows: list[dict], passports: list[dict]) -> str:
@@ -133,8 +156,9 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
 
     used: set[int] = set()
     changes, counts = [], {"added": 0, "corrected": 0, "removed": 0, "unchanged": 0, "carried_over": 0, "unresolved": 0,
-                           "dotgov_placeholders": 0}
+                           "dotgov_placeholders": 0, "leads": 0, "demoted_fields": 0}
     dotgov_per_agency: dict[str, int] = {}
+    leads_per_agency: dict[str, int] = {}
     sections, agency_rows, per_agency = [], [], {}
 
     for a in agencies:
@@ -167,6 +191,13 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
                 kind = "added"
                 changes.append({"change": "added", "agency": a["official_name"], "service": row["service_name"]})
             counts[kind] += 1
+            if p.get("origin") == c.LEAD_ORIGIN:
+                changes[-1]["lead"] = True
+                counts["leads"] += 1
+                leads_per_agency[a["official_name"]] = leads_per_agency.get(a["official_name"], 0) + 1
+            if p.get("demoted_fields"):
+                changes[-1]["demoted"] = [d.get("field") for d in p["demoted_fields"]]
+                counts["demoted_fields"] += len(p["demoted_fields"])
             if dotgov_registry.is_placeholder(p):
                 changes[-1]["dotgov"] = True
                 counts["dotgov_placeholders"] += 1
@@ -174,13 +205,17 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
             rows.append(row)
             written.append(p)
         per_agency[a["official_name"]] = len(rows)
+        log.info("agency %s rows=%d leads=%d demoted_fields=%d", a["official_name"], len(rows),
+                 leads_per_agency.get(a["official_name"], 0),
+                 sum(len(p.get("demoted_fields") or []) for p in written))
         status = a["status"]
         if status == "Included" and not rows and not any(
                 c.agency_key(r.get("agency") or r.get("section")) == c.agency_key(a["official_name"])
                 for r in prev["passports"] if r["row"] not in used):
             status = "Excluded"
             a.setdefault("status_reason", None)
-            a["status_reason"] = a["status_reason"] or "no public-facing service confirmed in official sources"
+            a["status_reason"] = (a["status_reason"] or dropped_reason(a)
+                                  or "no public-facing service confirmed in official sources")
             changes.append({"change": "agency_excluded", "agency": a["official_name"], "reason": a["status_reason"]})
             log.info("agency %s has no verified passports -> Excluded", a["official_name"])
         if status == "Included":
@@ -222,9 +257,11 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
             written_es = [p for p in src.get("passports", []) if p.get("origin") == "eservices"
                           and p.get("verification") in c.WRITABLE_VERIFICATION and p.get("action") != "remove"]
             label = src.get("other_sources_summary") or "other official sources"
-            total = len(section["rows"])
+            total = len(section["rows"]) - leads_per_agency.get(row_a["official_name"], 0)
             row_a["notes"] = (c.NOTES_LISTED.format(total=total, eservices=len(written_es), other=total - len(written_es), other_source=label)
                               if written_es else c.NOTES_NOT_LISTED.format(total=total, other_source=label))
+            row_a["notes"] += leads_suffix([p for p in src.get("passports", [])
+                                            if p.get("verification") in c.WRITABLE_VERIFICATION])
             row_a["notes"] += dotgov_suffix(src.get("passports", []))
             row_a["notes"] += f"; {carried} kept from the previous workbook without re-check"
     known = {s["agency"] for s in sections}
@@ -250,12 +287,13 @@ def build(ministry: str, agencies: list[dict], out_dir: Path, spec: dict, import
     summary = {**counts, "ministry_total": total, "ministry_no": ministry_no,
                "agencies_included": sum(1 for a in agency_rows if a["status"] == "Included"),
                "per_agency": {s["agency"]: len(s["rows"]) for s in sections},
-               "dotgov_per_agency": dotgov_per_agency,
+               "dotgov_per_agency": dotgov_per_agency, "leads_per_agency": leads_per_agency,
                "workbook": str(target), "previous_version": str(version_path) if version_path else None,
                "previous_state": str(prev_path) if prev_path else None, "changes": changes}
     log.info("build done added=%d corrected=%d removed=%d unchanged=%d carried_over=%d unresolved=%d "
-             "dotgov_placeholders=%d total=%d", counts["added"], counts["corrected"], counts["removed"],
-             counts["unchanged"], counts["carried_over"], counts["unresolved"], counts["dotgov_placeholders"], total)
+             "dotgov_placeholders=%d leads=%d demoted_fields=%d total=%d", counts["added"], counts["corrected"],
+             counts["removed"], counts["unchanged"], counts["carried_over"], counts["unresolved"],
+             counts["dotgov_placeholders"], counts["leads"], counts["demoted_fields"], total)
     return summary
 
 

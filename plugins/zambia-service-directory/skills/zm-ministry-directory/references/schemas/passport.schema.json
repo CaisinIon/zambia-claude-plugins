@@ -69,7 +69,8 @@
       "enum": [
         "eservices",
         "official_other",
-        "imported"
+        "imported",
+        "lead"
       ]
     },
     "eservices_id": {
@@ -160,7 +161,8 @@
         "Verified",
         "Verified with limitations",
         "Unresolved",
-        "DotGov placeholder"
+        "DotGov placeholder",
+        "Unconfirmed lead"
       ]
     },
     "verification_notes": {
@@ -219,6 +221,34 @@
         "null"
       ],
       "description": "why a service that name-matches a DotGov service is a different service (downgrades R-DOTGOV-DUP to a warning)"
+    },
+    "demoted_fields": {
+      "type": "array",
+      "description": "fields set to 'Not published' on the final verdict because their value could not be verified",
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "old_value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
     }
   },
   "$defs": {

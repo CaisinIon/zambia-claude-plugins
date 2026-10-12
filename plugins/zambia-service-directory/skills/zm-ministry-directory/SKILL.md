@@ -94,7 +94,9 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
    5. `"$PY" -B "$S/agency_file.py" apply-verdict RUN <slug>`.
    If `repair > 0`: set the ledger to `repair`, move the round-1 verdict aside (`verify/<slug>.round1.json`), start a researcher with
    `REPAIR` = the `repairs` list that `apply-verdict` printed (index, service, repair note; the same text is in each passport's `verification_notes`), run one more verification round (scope `SET.reverify_scope`), then
-   `apply-verdict RUN <slug> --final`. At most one repair round. Then set the ledger to `verified`, or `unresolved` if every passport failed.
+   `apply-verdict RUN <slug> --final`. At most one repair round. `--final` keeps a failing service when it can: failed fields become
+   `Not published` (`demoted`, row `Verified with limitations`) if the verifier confirmed the service exists, or the row becomes an
+   `Unconfirmed lead` if only a tier-5 source names it. Then set the ledger to `verified`, or `unresolved` if every passport ended `Unresolved`.
 
 5. **Ministry-wide check.** `"$PY" -B "$S/validate_passports.py" RUN/agencies/*.json --out RUN/validation.json`.
    Cross-agency errors (R-DUP-ID, R-REASSIGN) are fixed by one targeted researcher call for the agency named in the finding.
@@ -114,7 +116,7 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 
 ## Final message to the user
 - One line: `<Ministry>: <total> passports (+added / ~corrected / −removed), <n> agencies, audit PASS|FAIL`.
-- A short per-agency table: agency | eServices count | passports | verifier result.
+- A short per-agency table: agency | eServices count | passports | unconfirmed leads | verifier result.
 - Paths of the workbook, `report.md` and `audit.md`.
 - Anything unresolved or carried over, and why.
 - The number of DotGov placeholders and the fill command (`"$PY" -B "$S/dotgov_fill.py" fill <workbook> --data <export>`).
@@ -122,7 +124,9 @@ init ─► roster ─► per agency: init file ─► research ─► check ─
 ## Rules
 - One ministry per run. Never mix ministries in one workbook.
 - eServices data only via `eservices.py` (public JSON API). Never scrape the directory page.
-- Never write a value without an official source (tiers 1–4). Tier 5 (LinkedIn, news) is for leads only.
+- Never write a value without an official source (tiers 1–4). Tier 5 (LinkedIn, news) is for leads only:
+  a service seen only there is written as an `Unconfirmed lead` row (name + description, other fields `Not published`).
+- Never drop a found service. A field that fails verification becomes `Not published`; only a non-service or duplicate is removed.
 - Never hand-edit the workbook. Always go through `build_workbook.py`, so every ministry file keeps the identical format from `templates/workbook_spec.json`.
 - Missing information is written as `Not published`. Never invent a value.
 - Never research, verify or edit a DotGov placeholder. After the run, `dotgov_fill.py` fills them from a DotGov database export.

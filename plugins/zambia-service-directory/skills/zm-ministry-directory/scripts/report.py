@@ -53,11 +53,12 @@ def render(run: Path) -> str:
     if build:
         lines += ["## Totals", "",
                   "| Added | Corrected | Removed | Unchanged | Carried over (not re-checked) | Unresolved "
-                  "| DotGov placeholders | Ministry total |",
-                  "|---|---|---|---|---|---|---|---|",
+                  "| DotGov placeholders | Unconfirmed leads | Fields set to Not published | Ministry total |",
+                  "|---|---|---|---|---|---|---|---|---|---|",
                   f"| {build.get('added', 0)} | {build.get('corrected', 0)} | {build.get('removed', 0)} | "
                   f"{build.get('unchanged', 0)} | {build.get('carried_over', 0)} | {build.get('unresolved', 0)} | "
-                  f"{build.get('dotgov_placeholders', 0)} | **{build.get('ministry_total', 0)}** |", ""]
+                  f"{build.get('dotgov_placeholders', 0)} | {build.get('leads', 0)} | {build.get('demoted_fields', 0)} | "
+                  f"**{build.get('ministry_total', 0)}** |", ""]
     status = []
     if wbv is not None:
         status.append(f"Workbook validation: {'PASS' if wbv.get('ok') else 'FAIL'} "
@@ -82,6 +83,9 @@ def render(run: Path) -> str:
         es_ok = [p for p in live if p.get("origin") == "eservices" and p.get("verification") in c.WRITABLE_VERIFICATION
                  and not dotgov_registry.is_placeholder(p)]
         other = [p for p in live if p.get("origin") == "official_other" and p.get("verification") in c.WRITABLE_VERIFICATION]
+        leads = [p for p in live if p.get("origin") == c.LEAD_ORIGIN and p.get("verification") in c.WRITABLE_VERIFICATION]
+        demoted = [f"{p['service_name']}: {', '.join(d.get('field', '?') for d in p['demoted_fields'])}"
+                   for p in live if p.get("demoted_fields") and p.get("verification") in c.WRITABLE_VERIFICATION]
         conflicts = [f"{p['service_name']}: {x['field']} — {x['description']} (used: {x['source_used']})"
                      for p in live for x in p.get("conflicts", [])]
         corrected = [f"{ch['service']} ({', '.join(ch.get('fields', []))})" for ch in mine if ch["change"] == "corrected"]
@@ -99,6 +103,9 @@ def render(run: Path) -> str:
             + (f" — IDs {', '.join(str(p['eservices_id']) for p in dotgov)}" if dotgov else ""),
             "- **Corrected service passports:**", _bullets(corrected),
             "- **Additional services from other official sources:**", _bullets([p["service_name"] for p in other]),
+            "- **Unconfirmed leads (non-official sources only):**",
+            _bullets([f"{p['service_name']} — {p.get('source_link')}" for p in leads]),
+            "- **Fields set to Not published after failed verification:**", _bullets(demoted),
             "- **Source limitations or conflicting information:**",
             _bullets([*a.get("source_limitations", []), *conflicts]),
             "- **Historical-fee warnings:**", _bullets(a.get("historical_fee_warnings", [])),
@@ -125,6 +132,19 @@ def render(run: Path) -> str:
             by_agency.setdefault(name, []).append(p["eservices_id"])
         lines += [f"| {name} | {', '.join(map(str, sorted(ids)))} |" for name, ids in by_agency.items()]
         lines.append("")
+    lead_all = [(files[s]["official_name"], p) for s in slugs for p in files[s].get("passports", [])
+                if p.get("origin") == c.LEAD_ORIGIN and p.get("verification") in c.WRITABLE_VERIFICATION]
+    if lead_all:
+        lines += ["## Unconfirmed leads", "",
+                  f"{len(lead_all)} services were found only in non-official sources (news, LinkedIn, directories). "
+                  "They are written with name and description only; confirm them with the agency before relying on them.", "",
+                  "| Agency | Service | Lead source |", "|---|---|---|",
+                  *[f"| {name} | {p['service_name']} | {p.get('source_link')} |" for name, p in lead_all], ""]
+    blocked = [(files[s]["official_name"], x) for s in slugs for x in files[s].get("source_limitations", [])
+               if "blocked" in str(x).lower() or "bot wall" in str(x).lower()]
+    if blocked:
+        lines += ["## Official sources that blocked automated access", "",
+                  *[f"- {name}: {x}" for name, x in blocked], ""]
     carried = [ch for ch in changes if ch["change"] == "carried_over"]
     if carried:
         lines += ["## Carried over without re-check", "",

@@ -28,6 +28,9 @@ Rule ids (severity):
   R-DOTGOV (error)    DotGov placeholder malformed (status, ID, marker/token), or a token in a normal passport
   R-DOTGOV-DUP (error) web/imported service name-matches a DotGov service of the agency (warn: possible match,
                       or dotgov_distinct_reason given)
+  R-LEAD (error)      Unconfirmed lead row malformed: origin/verification mismatch, missing description prefix,
+                      a LEAD_FIELDS value other than 'Not published', or no tier-5 source for the service name
+  R-DEMOTED (warn)    fields set to 'Not published' after failed verification (listed for the report)
 """
 from __future__ import annotations
 
@@ -149,6 +152,36 @@ def check_dotgov_dup(p: dict, agency: dict, registry: dict | None, f: Findings) 
           fix=None if reason else f"remove it (DotGov service {m['service_id']}), or set dotgov_distinct_reason")
 
 
+def check_lead(p: dict, agency: dict, f: Findings) -> bool:
+    """Rules for Unconfirmed lead rows. Returns True when the passport is a lead row."""
+    name = agency.get("official_name", "?")
+    is_lead = p.get("origin") == c.LEAD_ORIGIN
+    if p.get("verification") == c.LEAD_VERIFICATION and not is_lead:
+        f.add("R-LEAD", "error", name, f"verification {c.LEAD_VERIFICATION!r} but origin {p.get('origin')!r}", p,
+              fix=c.LEAD_ORIGIN)
+    if p.get("demoted_fields"):
+        f.add("R-DEMOTED", "warn", name,
+              f"set to {c.NOT_PUBLISHED} after failed verification: {[d.get('field') for d in p['demoted_fields']]}", p)
+    if not is_lead:
+        return False
+    log.debug("lead row %r (%s)", p.get("service_name"), name)
+    if p.get("verification") not in ("Pending", c.LEAD_VERIFICATION, "Unresolved"):
+        f.add("R-LEAD", "error", name, f"lead row has verification {p.get('verification')!r}", p,
+              fix=c.LEAD_VERIFICATION)
+    if not str(p.get("service_description") or "").startswith(c.LEAD_PREFIX):
+        f.add("R-LEAD", "error", name, "lead row description lacks the unconfirmed-lead prefix", p, fix=c.LEAD_PREFIX)
+    for field in c.LEAD_FIELDS:
+        if str(p.get(field) or "").strip() != c.NOT_PUBLISHED:
+            f.add("R-LEAD", "error", name, f"lead row {field}={p.get(field)!r}; must be {c.NOT_PUBLISHED!r}", p,
+                  fix=c.NOT_PUBLISHED)
+    if p.get("eservices_id") is not None:
+        f.add("R-LEAD", "error", name, "lead row has an eServices ID (eServices is an official source)", p)
+    tiers = [s.get("tier") for s in (p.get("field_sources") or {}).get("service_name", [])]
+    if 5 not in tiers:
+        f.add("R-LEAD", "error", name, f"lead row needs a tier-5 source for service_name (tiers={tiers})", p)
+    return True
+
+
 def check_passport(p: dict, agency: dict, f: Findings) -> None:
     name = agency.get("official_name", "?")
     for err in schema_errors(p, "passport"):
@@ -158,6 +191,7 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
               f"passport ministry/agency {p.get('ministry')!r}/{p.get('agency')!r} != agency file", p)
 
     dotgov_ok = check_dotgov(p, agency, f)
+    lead = check_lead(p, agency, f)
     sources = p.get("field_sources") or {}
     for field in c.PASSPORT_FIELDS:
         value = str(p.get(field) or "").strip()
@@ -175,6 +209,8 @@ def check_passport(p: dict, agency: dict, f: Findings) -> None:
         if _is_placeholder(value):
             if not tiers:
                 f.add("R-SOURCE", "warn", name, f"{field}={value!r} but no checked source recorded", p)
+        elif lead and field in ("service_name", "service_description") and tiers:
+            continue  # a lead row's name and description may rest on its tier-5 source
         elif not tiers or min(tiers) > c.MAX_CITABLE_TIER:
             f.add("R-SOURCE", "error", name,
                   f"{field} has no official source (tiers={tiers}); tier 5 is lead-only", p)
@@ -309,6 +345,8 @@ def validate(agencies: list[dict], registry: dict | None | str = "auto") -> dict
             "other": sum(1 for p in live if p.get("origin") != "eservices"),
             "writable": sum(1 for p in live if p.get("verification") in c.WRITABLE_VERIFICATION),
             "dotgov_placeholders": sum(1 for p in live if dotgov_registry.is_placeholder(p)),
+            "leads": sum(1 for p in live if p.get("origin") == c.LEAD_ORIGIN),
+            "demoted_fields": sum(len(p.get("demoted_fields") or []) for p in live),
             "eservices_count": (a.get("eservices") or {}).get("service_count", 0),
         }
     log.info("validation done agencies=%d errors=%d warnings=%d", len(agencies), errors, warnings)

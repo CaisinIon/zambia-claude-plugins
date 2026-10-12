@@ -15,7 +15,8 @@ You need:
   The first run sets everything else up by itself.
 - Windows only: Git for Windows (Claude Code needs it to run commands). See section 2c.
 - Internet access to `eservices.gov.zm` and to the government and legal websites.
-- Optional: the Chrome DevTools tool (`.mcp.json`) for websites that only show content with JavaScript.
+- Recommended: the Chrome DevTools tool (`.mcp.json`). Some agency websites only show content with JavaScript, and some
+  block scripts with a bot check (for example napsa.co.zm). Without Chrome, those sites are read from archive copies only.
 
 ## 2. Install
 
@@ -175,9 +176,17 @@ output/<Ministry_Name>/
 **The workbook** has three sheets:
 - **Overview**: ministry, number of agencies and passports, and a count per agency.
 - **Agencies**: one row per agency, with a `Status` (`Included` or `Excluded`) and a `Notes` cell in a fixed wording, e.g. "7 verified services: 5 on Zambia eServices and 2 on the MoT Casino Licensing downloads page".
+  - The number counts confirmed services only. Unconfirmed leads are added at the end: "…; 3 unconfirmed leads from non-official sources".
+  - An agency is `Excluded` only when nothing at all was found. If services were found but none could be confirmed, Notes say so,
+    e.g. "0 services verified; 2 services found but not confirmed (official site blocked automated access)".
 - **Service Passport**: one section per agency with the 11 fixed columns. Missing information is always `Not published`.
+  - A row whose Service Description starts with `Unconfirmed lead — not confirmed on an official source:` is a service seen only in
+    news, LinkedIn or directories. Only its name and description are filled; every other field is `Not published`.
 
-**The report** (`report.md`), for each agency, shows: official name, eServices status, exact eServices count, services verified, corrected passports, additional services from other official sources, source limits and conflicts, historical-fee warnings, and the running ministry total. At the top are totals: added, corrected, removed, kept without re-check, unresolved.
+**The report** (`report.md`), for each agency, shows: official name, eServices status, exact eServices count, services verified, corrected passports, additional services from other official sources, source limits and conflicts, historical-fee warnings, unconfirmed leads, fields set to `Not published` after a failed check, and the running ministry total.
+At the top are totals: added, corrected, removed, kept without re-check, unresolved, unconfirmed leads, fields set to Not published.
+Two extra sections appear when needed: **Unconfirmed leads** (each lead with its source link) and
+**Official sources that blocked automated access**.
 
 **The audit verdict** (`audit.md`) is PASS or FAIL. A FAIL is not always a problem with the data. It also appears when:
 - kept rows still say `Not specified` (the old wording), or
@@ -189,18 +198,20 @@ Read the table in `audit.md`. It says what to fix and where.
 | Word | Meaning |
 |---|---|
 | Verified / Verified with limitations | Checked against sources. "With limitations" says what could not be confirmed (for example a blocked website). |
-| Unresolved | No official source could be found. The row is **not rewritten**. The old row stays and is flagged. |
+| Not published (after a failed check) | The service is confirmed on an official page, but one value (e.g. the fee) could not be proven. That value becomes `Not published`; the row is kept as "Verified with limitations" and listed in `report.md`. |
+| Unconfirmed lead | A service found only in non-official sources (news, LinkedIn, directories). Written with name and description only. Confirm it with the agency before relying on it. |
+| Unresolved | Not a distinct public service, or no source at all. The row is **not written**. An old row stays and is flagged. |
 | Carried over / kept without re-check | An old row that this run neither confirmed nor removed. |
 | Historical fee | A fee from an old source. The exact label is "Historical fee — current amount requires confirmation". |
-| Excluded | The agency has no public-facing service (for example only an information page). |
+| Excluded | Nothing at all was found for the agency: no confirmed service and no lead (for example only an information page). |
 | Reassigned | An eServices service listed under one agency but delivered by another. It is counted once, under the agency that delivers it. |
 | FROM DOTGOV [agency - service] {{DOTGOV:96:fee}} | A service DotGov built. It was not researched, because DotGov already has its data. The `{{…}}` token says which service (96) and field (fee) to fill from the DotGov database. See section 9a. |
 
 ## 9. What to do after a run
 
-1. Open `report.md`, read the totals and the "Unresolved" and "Carried over" lists.
+1. Open `report.md`, read the totals and the "Unresolved", "Carried over" and "Unconfirmed leads" lists.
 2. Open the workbook in Excel and spot-check 5–10 changed rows against the official source shown in `Source / Service Link`.
-3. For unresolved rows: ask the agency for the source, or remove the row (delete it from the workbook, or say so in the next run).
+3. For unresolved rows and unconfirmed leads: ask the agency for the source. A lead that the agency confirms becomes a normal row in the next run.
 4. Run again later with the same command to update. The old workbook is kept in `versions/`.
 5. Share `report.md` or the summary with the team.
 
@@ -220,6 +231,17 @@ Service Name and Description are already filled in from the DotGov list.
    This writes `…_filled.xlsx` next to the workbook. Your workbook is not changed. The command also prints how many cells it filled,
    which values were missing (those cells keep their placeholder), and which ServiceIDs were not in the workbook.
 4. A new run rebuilds the placeholders, so run the fill again after every run.
+
+**A whole folder of workbooks** (one export for all ministries):
+```bash
+"$PY" ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/dotgov_fill.py batch "<folder with workbooks>" --data export.json --out-dir "<new folder>"
+```
+- Every `.xlsx` is written to the new folder under the same name. The source folder is not changed.
+- Workbooks without placeholders are copied unchanged.
+- Rows are made taller where the new text needs more lines.
+- When all placeholders of a workbook are filled, its Agencies Notes change from `; N from DotGov (data to be filled)` to
+  `; N from DotGov eServices (filled from the DotGov database on <date>)`.
+- `--out-dir` must be a new folder. Add `--force` to write into an existing one, and `--report batch.json` for per-file results.
 
 **Refresh the DotGov list** (after DotGov adds or renames services): run the query from the Excel's Sheet2 again, save it as Excel, then
 `"$PY" ${CLAUDE_PLUGIN_ROOT}/skills/zm-ministry-directory/scripts/dotgov_registry.py extract "<path to the Excel>"`.
@@ -243,7 +265,7 @@ Run the same command again. The tool uses the ministry's current workbook as the
 | `ERROR [ministry-no]` | `input/ministries.json` has duplicate numbers or names. Fix the file. |
 | `ERROR [template-conflict]` | The format template was changed. Restore `templates/reference_workbook.xlsx`, or read section 13. |
 | The run stopped or timed out | Run it again with `--resume output/<Ministry>/runs/<time>`. Finished agencies are not repeated. |
-| A website is blocked (403 or a login page) | Not an error. The report lists it under source limits. Sources that can't be opened are never guessed. |
+| A website is blocked (403, a login page, or a bot check) | Not an error. The tool retries, then reads the page through Chrome, then from the Internet Archive. A blocked site never means "no services": services found elsewhere are still written (as unconfirmed leads if needed). The report lists blocked sites in their own section. Values from pages that can't be opened are never guessed. |
 | Agents do not start in Desktop | The tool then plays each role itself (see `references/ROLES.md`). It is slower but follows the same rules. |
 | Too slow or too costly | Use `--profile fast`, or lower `audit_sample` and `verifier_chunk`. |
 | The audit says FAIL | Read `audit.md`. See section 8. |
@@ -259,6 +281,7 @@ Verbose logging: set `LOG_LEVEL=DEBUG`. Add `ZM_RUN_DIR=<run folder>` to also sa
 ## 14. What the tool does not do
 
 - It does not decide policy: whether a public-register search counts as a service is a rule in `references/TERMINOLOGY.md` (today: no). Change it there and say so.
-- It cannot read sites that block automated access. It uses other official copies and archives instead, and says so.
+- It cannot always read sites that block automated access. It tries Chrome and archive copies, and says so in the report.
+- An unconfirmed lead is not a verified service. It shows that a service probably exists, nothing more.
 - Old fees stay in their original unit and are labelled historical, unless an official source for the current value is saved.
 - It cannot prove a value is right. It checks values against sources and records conflicts. A person should still review anything that will be published.

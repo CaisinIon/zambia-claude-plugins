@@ -41,7 +41,7 @@ holds their data. Do not give them a verdict. They still count in the agency's e
 |---|---|
 | V-SRC-1 | Each field value is supported by its `field_sources` excerpt **and** by the saved evidence text (`evidence_path` or `text.txt`, opened with Read/Grep). Wording may be summarised; numbers, fees, periods and names must match exactly. |
 | V-LIVE | Re-open ≥ 1 cited source per passport live: WebFetch the URL, or for eServices `"$PY" -B "$S/eservices.py" service <ID>` (skip eServices passports the `LIVE` file already marks `ok`). Confirm the key values still hold (fee, processing time, validity). If the page is down, the saved evidence decides; note it. |
-| V-SRC-2 | No field rests only on tier-5 sources (LinkedIn, news, Wikipedia). |
+| V-SRC-2 | No field rests only on tier-5 sources (LinkedIn, news, Wikipedia). Exception: a lead row's name and description (V-LEAD). |
 | V-INV | Nothing invented: every value that is not `Not published` / `Not applicable` has evidence. `Not published` is used only where the cited source was checked and is silent. |
 | V-SCOPE | It is an external public service a person or organisation applies for, books or pays for. It is not recruitment, a tender, an internal process or an information page. |
 | V-DUP | Not a channel, payment or new/renewal duplicate of another passport (TERMINOLOGY counting rules). |
@@ -50,6 +50,7 @@ holds their data. Do not give them a verdict. They still count in the agency's e
 | V-NAME | The agency's `official_name` and acronym are current (as used on its own site or in the governing Act). |
 | V-LINK | `source_link` is the most specific official URL and opens. An eServices link is `https://eservices.gov.zm/#/service/<ID>`. |
 | V-REMOVE | For `action: "remove"`: the evidence really shows a duplicate or non-service. PASS = removal confirmed. |
+| V-LEAD | Lead rows only (`origin: "lead"`): the lead URL opens (or its saved evidence) and names this service; the description starts with `Unconfirmed lead — not confirmed on an official source: `; all of `who_can_apply, eligibility_requirements, fee, processing_time, validity, legal_references` are `Not published`; V-SCOPE and V-DUP as usual. Do **not** fail a lead row for lacking an official source: that is what a lead row is. If you find the service on an official page, PASS it and say so in `notes` (the researcher can upgrade it next run). |
 
 Also check at agency level:
 - The eServices count: run `"$PY" -B "$S/eservices.py" agency --authority-id <each id in eservices.authority_ids> --ministry X --agency X --out RUN/verify/SLUG.eservices.json`.
@@ -57,10 +58,20 @@ Also check at agency level:
   and `excluded` / `reassigned_out` reasons are sound.
 - `missing_services`: obvious public services on the agency's official site that have no passport (list the URL). Report only; do not add passports.
 
+## Which fields failed, and does the service exist?
+
+A FAIL no longer drops the service. After the last round, `apply-verdict --final` sets every field in `failed_fields`
+to `Not published` and keeps the row as `Verified with limitations`, **if** `exists_confirmed` is true. So for every FAIL:
+- `failed_fields`: the exact passport fields whose value is wrong or unsupported (e.g. `["fee", "processing_time"]`).
+  Only list fields that are really wrong; a field you list will be blanked. Use `service_name` only when the name itself is wrong.
+- `exists_confirmed`: `true` when a tier 1–4 page (saved evidence or live) shows that this agency offers this service, even if
+  it gives no other detail; `false` when no official page names it. eServices passports always exist.
+- A V-SCOPE or V-DUP failure removes the row, whatever the other keys say.
+
 ## Verdicts
 - `PASS`: all checks pass.
 - `PASS_WITH_LIMITS`: correct as far as sources allow, with a limitation the user should see (e.g. fee only in a 2016 SI, live page down, evidence archived). Write the limitation in `notes`.
-- `FAIL`: any V-SRC-1, V-SRC-2, V-INV, V-SCOPE, V-DUP, V-FEE or V-LAW failure, or a wrong link. Give a precise `fix_hint`
+- `FAIL`: any V-SRC-1, V-SRC-2, V-INV, V-SCOPE, V-DUP, V-FEE, V-LAW or V-LEAD failure, or a wrong link. Give a precise `fix_hint`
   (field, correct value if you know it, and the source).
 
 ## Output
@@ -70,7 +81,9 @@ Write `RUN/verify/SLUG.json`:
   "agency": "<official_name>", "verdict": "PASS|PASS_WITH_LIMITS|FAIL",
   "checked_at": "<ISO time>", "eservices_count_ok": true,
   "passports": [
-    {"index": 0, "service_name": "...", "eservices_id": 96, "verdict": "PASS", "rules": [], "notes": null, "fix_hint": null, "live_checked": "https://..."}
+    {"index": 0, "service_name": "...", "eservices_id": 96, "verdict": "PASS", "rules": [], "notes": null, "fix_hint": null, "live_checked": "https://..."},
+    {"index": 1, "service_name": "...", "eservices_id": null, "verdict": "FAIL", "rules": ["V-FEE"], "failed_fields": ["fee"], "exists_confirmed": true,
+     "notes": "fee not on the cited page", "fix_hint": "fee: Not published", "live_checked": "https://..."}
   ],
   "missing_services": ["<url> — <service>"],
   "notes": "short agency-level remarks"

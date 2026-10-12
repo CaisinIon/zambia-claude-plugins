@@ -7,7 +7,8 @@ maxTurns: 90
 ---
 
 You research **one agency** of one Zambian ministry and complete its result file.
-Accuracy beats coverage. Never invent a value.
+Never invent a value, and never drop a service you found: a service you cannot fully confirm is still written,
+with `Not published` for what is unproven (or as an Unconfirmed lead row, step 3b).
 
 ## Input (from the orchestrator prompt)
 - `RUN`: run directory · `SLUG`: agency slug from `RUN/roster.json`
@@ -44,10 +45,20 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
    - An eServices entry that is not a real public service (duplicate test entry, internal process): add it to
      `eservices.excluded` with a reason. Do not write a passport for it.
 
-3. **Find additional services** (tiers 2–4 in SOURCES.md; tier 5 only as leads): the agency website, forms/downloads,
+3. **Find additional services** (tiers 2–4 in SOURCES.md; tier 5 to find them, or as lead rows in 3b): the agency website, forms/downloads,
    fee schedules or SIs, the ministry site, the regulator, and official social pages.
    - Save every page or PDF you rely on: `"$PY" -B "$S/fetch_source.py" <url> --out RUN/evidence/SLUG --tier N`.
-     Read `text_path` to extract values. If it exits 3 (JavaScript page), use Chrome DevTools, then `--from-text`.
+     Read `text_path` to extract values.
+   - **Never give up on an official site after one failed fetch.** Many agency sites (e.g. napsa.co.zm, Imperva Incapsula)
+     block scripts. When `fetch_source.py` exits **3** (JavaScript page or bot wall: `bot_wall` in its output), **4** or **5**
+     on a tier 1–4 URL, go down this ladder and stop at the first step that gives you the text:
+     1. Chrome DevTools: `new_page`/`navigate_page` → `wait_for` → `take_snapshot`; save the snapshot text to a file,
+        then `"$PY" -B "$S/fetch_source.py" <url> --out RUN/evidence/SLUG --tier N --from-text <file>`.
+     2. Internet Archive: `https://web.archive.org/web/2026*/<url>` (or the newest year listed) → `fetch_source.py` on the
+        archived URL, same tier, `--note "archived <date>"`.
+     3. Sub-pages linked from the home page or the site's link list (services, benefits, forms, downloads, FAQ), each through steps 1–2.
+     4. Only then add `source_limitations: "<url> blocked (<bot_wall or HTTP status>); tried Chrome and archive"` and use 3b.
+     Log each attempt: `bot wall <url> → <recovery step> → ok|failed`.
    - **Before adding any service, check it is not a DotGov service** (names can differ a little):
      `"$PY" -B "$S/dotgov_registry.py" match --run RUN --slug SLUG --agency "<official name>" --name "<service name as found>"`
      - `match` → do not add it and do not research it. Log `skip DotGov <service_id>: <found name> ≈ <DotGov name> (score)`.
@@ -55,9 +66,20 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
        `dotgov_distinct_reason` and log the reason either way.
      - `none` → continue.
    - Add each distinct service (counting rules in TERMINOLOGY.md) as a passport with `origin: official_other`, `eservices_id: null`.
+     A service named on an official page is added **even if that page gives only its name**: the fields the page does not
+     give are `Not published` (cite the page you checked).
    - Every field gets a value or `Not published` / `Not applicable`, plus `field_sources[field]` = `[{url, tier, retrieved_at, excerpt, sha256, evidence_path}]`
      (use `sha256` and `text_path` from fetch_source's output). For `Not published`, cite the source you checked.
    - `source_link` = the most specific official URL (see Source-recording method in TERMINOLOGY.md).
+
+3b. **Unconfirmed leads.** A service you found only in tier-5 sources (news, LinkedIn, directories, unofficial pages, search snippets)
+   after the ladder above failed to confirm it is still written, as a lead row (TERMINOLOGY.md → Unconfirmed leads):
+   `origin: "lead"`, `eservices_id: null`, `service_description` = `Unconfirmed lead — not confirmed on an official source: `
+   + one sentence from the lead, every one of `who_can_apply, eligibility_requirements, fee, processing_time, validity, legal_references`
+   = `Not published`, `source_link` = the lead URL (https, the article itself, not a homepage),
+   `field_sources.service_name` and `.service_description` = the lead source with `tier: 5`.
+   Run the DotGov `match` check first, as for any other service. Apply the same scope and counting rules.
+   Do not copy fees, periods or eligibility from a lead into a field. Log `lead <service> <url>`.
 
 4. **Re-check imported rows** (`origin: imported`, from the previous workbook). Run the same DotGov `match` first:
    a DotGov service gets `action: "remove"` with `action_reason: "DotGov service <service_id>"`.
@@ -68,20 +90,23 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
      Do not change its values. The builder keeps the old row unchanged and reports it as carried over / not re-checked.
 
 5. **Agency fields:** `official_name` (current, with acronym), `digitizable_service_areas` (one line, like the reference:
-   "Casino licensing; renewals, transfers and variations; …"), `source_link` (eServices directory URL if listed, else the
+   "Casino licensing; renewals, transfers and variations; …"; never add "(leads only …)": lead status lives in the rows), `source_link` (eServices directory URL if listed, else the
    agency's main services page), `other_sources_summary` (short label, e.g. `the DNPW forms page`),
    `source_limitations[]`, `historical_fee_warnings[]`, `searched_sources[]` (every URL/query you used).
    Leave `notes: null`; the builder writes Notes from fixed patterns.
+   If you found no service at all, set `status_reason` to the real cause (e.g. `official site blocked automated access; no leads found`).
 
 6. **Self-check.** Run `"$PY" -B "$S/agency_file.py" check RUN SLUG` and fix every `error`. Warnings are allowed only with a reason
-   in `source_limitations`. Leave `verification` as `Pending` on every passport you confirmed. Only the verifier sets `Verified`.
+   in `source_limitations`. Leave `verification` as `Pending` on every passport, lead rows included.
+   Only the verifier sets `Verified` or `Unconfirmed lead`.
    `Unresolved` is allowed only for imported rows you could not confirm (step 4).
 
 7. Write `RUN/logs/SLUG.md`: queries, sources opened (tier), services accepted or rejected with the reason,
-   DotGov skips (`skip DotGov …` lines), and conflicts.
+   DotGov skips (`skip DotGov …` lines), bot-wall recoveries, lead rows, and conflicts.
 
 ## Hard rules
 - Do not invent missing information. `Not published` = the official source was checked and does not say.
+- Tier 5 alone never backs a field value. It can only back a lead row's name and description (step 3b).
   `Not applicable` = the field genuinely does not apply.
 - Do not assume a service exists because a similar agency offers it.
 - One passport per distinct service. Payment or submission channels, and new/renewal on one eServices entry, are not separate.
@@ -92,4 +117,4 @@ Read first: `$R/TERMINOLOGY.md`, `$R/SOURCES.md`, `$R/ESERVICES-API.md`.
 - Never change a DotGov placeholder, and never research a service that `dotgov_registry.py match` reports as `match`.
 
 ## Output
-Final message, one line: `SLUG: E eServices (D DotGov) + O other + I imported (R to remove), errors=0, warnings=W`.
+Final message, one line: `SLUG: E eServices (D DotGov) + O other + L leads + I imported (R to remove), errors=0, warnings=W`.

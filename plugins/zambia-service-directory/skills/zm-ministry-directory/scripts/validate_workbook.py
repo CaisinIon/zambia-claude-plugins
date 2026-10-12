@@ -20,6 +20,7 @@ Rule ids:
   W-CONSIST   ministry / agency names disagree between sheets
   W-DOTGOV    malformed DotGov placeholder, or token ID differs from the row's eServices link
               (well-formed placeholders are counted in the summary: dotgov_rows, dotgov_tokens)
+  W-LEAD      unconfirmed lead row (description prefix) with a value other than 'Not published' in Who Can Apply..Legal References
 """
 from __future__ import annotations
 
@@ -149,6 +150,12 @@ def check_passport_sheet(rep: Report, ws, spec_sp: dict, data: dict) -> None:
                 else:
                     rep.dotgov_rows.add(p["row"])
                     rep.dotgov_tokens += 1
+        if is_lead_row(p):
+            for f in c.LEAD_FIELDS:
+                if str(p.get(f) or "").strip() != c.NOT_PUBLISHED:
+                    col = get_column_letter(c.PASSPORT_FIELDS.index(f) + 1)
+                    rep.add("W-LEAD", "error", ws.title, f"{col}{p['row']}",
+                            f"unconfirmed lead row: {dict(c.PASSPORT_COLUMNS)[f]} must be {c.NOT_PUBLISHED!r}")
     keys = Counter((c.normalise_name(p.get("agency")), c.normalise_name(p.get("service_name"))) for p in data["passports"])
     for (agency, name), n in keys.items():
         if n > 1:
@@ -159,8 +166,13 @@ def check_passport_sheet(rep: Report, ws, spec_sp: dict, data: dict) -> None:
             rep.add("W-DUP", "error", ws.title, "-", f"eServices service {sid} linked by {n} rows")
 
 
+def is_lead_row(p: dict) -> bool:
+    return str(p.get("service_description") or "").startswith(c.LEAD_PREFIX)
+
+
 def check_totals(rep: Report, data: dict) -> None:
     actual = Counter(p["section"] for p in data["passports"])
+    leads = Counter(p["section"] for p in data["passports"] if is_lead_row(p))
     total = sum(actual.values())
     ov = data["overview"]
     declared_total = (ov.get("Service passports") or {}).get("value")
@@ -189,9 +201,11 @@ def check_totals(rep: Report, data: dict) -> None:
         if a.get("Ministry") != ministry:
             rep.add("W-CONSIST", "error", "Agencies", f"B{a['row']}", f"ministry {a.get('Ministry')!r} != {ministry!r}")
         m = re.match(r"\s*(\d+)\b", str(a.get("Notes") or ""))
-        if m and a.get("Entity") in actual and int(m.group(1)) != actual[a["Entity"]]:
+        confirmed = actual.get(a.get("Entity"), 0) - leads.get(a.get("Entity"), 0)
+        if m and a.get("Entity") in actual and int(m.group(1)) != confirmed:
             rep.add("W-TOTAL", "error", "Agencies", f"G{a['row']}",
-                    f"Notes say {m.group(1)} services but sheet has {actual[a['Entity']]} rows")
+                    f"Notes say {m.group(1)} services but sheet has {confirmed} confirmed rows"
+                    + (f" (+{leads[a['Entity']]} unconfirmed leads)" if leads.get(a.get("Entity")) else ""))
     numbers = {a.get("Ministry No.") for a in data["agencies"]}
     if len(numbers) > 1:
         rep.add("W-CONSIST", "error", "Agencies", "A:A", f"several Ministry No. values {sorted(map(str, numbers))}")

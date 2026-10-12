@@ -3,6 +3,8 @@
 Use the sources in tier order. Record the tier of every source you cite (`field_sources[].tier`).
 **Tier 5 is lead-only.** It helps you *find* a service or an official link. It never backs a field value on its own.
 If only tier 5 supports a value, write `Not published` and note the lead in `source_limitations`.
+If only tier 5 shows that a *service* exists, write it as an **Unconfirmed lead** row (TERMINOLOGY.md): name and
+description from the lead, every other field `Not published`. Never drop it.
 
 | Tier | Source type | Examples | Use for |
 |---|---|---|---|
@@ -10,7 +12,7 @@ If only tier 5 supports a value, write `Not published` and note the lead in `sou
 | 2 | Agency's own official website and documents | service pages, application forms (PDF/Word), fee schedules, citizen / service charters, annual reports listing licences issued | additional services; fees; processing times; corrections |
 | 3 | Legislation | Acts, statutory instruments (fees are often in an SI schedule), Government Gazette notices | legal references; fees fixed by law; who may apply |
 | 4 | Oversight and other government sources | the ministry website, the regulator, Cabinet Office, other `.gov.zm` portals, ZamPortal, official verified agency social-media pages (dated posts) | existence of services; the list of agencies under a ministry; recent fee announcements |
-| 5 | Leads only | LinkedIn (agency pages, staff posts), news (ZNBC, Zambia Daily Mail, Times of Zambia, Lusaka Times, Diggers), Wikipedia, directories, blogs | finding services, new agency names, dead links, official documents to fetch |
+| 5 | Leads only | LinkedIn (agency pages, staff posts), news (ZNBC, Zambia Daily Mail, Times of Zambia, Lusaka Times, Diggers), Wikipedia, directories, blogs | finding services, new agency names, dead links, official documents to fetch; Unconfirmed lead rows (name + description only) |
 
 ## Known starting points
 
@@ -29,6 +31,11 @@ Check each URL on first use. Record in `searched_sources` which ones you opened.
 
 Many `.gov.zm` sites have broken TLS chains. `fetch_source.py` retries without verification and records `tls_verified: false`.
 This is fine for evidence, but note it.
+
+Some agency sites sit behind bot protection (Imperva Incapsula on napsa.co.zm, Cloudflare). The first request gets a tiny
+challenge page instead of the content. `fetch_source.py` retries twice with the same cookies; if it is still blocked it exits 3
+with `bot_wall: <vendor>`. Then use Chrome DevTools, then the Internet Archive (see the researcher's recovery ladder).
+A blocked site is never a reason to conclude that the agency has no services.
 
 ## Tools, in order of preference
 
